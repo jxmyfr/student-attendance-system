@@ -1,0 +1,14 @@
+# ป้องกันการอัปโหลด Environment
+venv/
+__pycache__/
+
+# ป้องกันการอัปโหลดไฟล์รูปภาพและฐานข้อมูลส่วนตัว
+images_db/
+encodings.pickle
+school_data.db
+attendance.csv
+student_info.csv
+
+# ระบบปฏิบัติการ
+.DS_Store
+Thumbs.db

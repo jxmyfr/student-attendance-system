@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบเช็กชื่อนักเรียนอัตโนมัติ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #ecf0f1;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        .navbar {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .navbar h1 { margin: 0; font-size: 1.5rem; }
+        .navbar p { margin: 5px 0 0; font-size: 0.9rem; color: #bdc3c7; }
+
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+
+        .video-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+            border: 5px solid #34495e;
+            border-radius: 8px;
+            overflow: hidden;
+            display: inline-block;
+            background-color: #000;
+        }
+
+        img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .controls {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+
+        .btn-update {
+            background-color: #e67e22;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            font-family: 'Sarabun', sans-serif;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-update:hover {
+            background-color: #d35400;
+        }
+
+        .status-dot {
+            height: 10px;
+            width: 10px;
+            background-color: #2ecc71;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .footer {
+            margin-top: 40px;
+            color: #7f8c8d;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="navbar">
+        <h1>Student Attendance System</h1>
+        <p>ระบบบันทึกเวลาเรียนด้วยใบหน้า (Face Recognition)</p>
+    </div>
+
+    <div class="container">
+        
+        <div class="video-wrapper">
+            <img src="{{ url_for('video_feed') }}" alt="Live Video Feed">
+        </div>
+
+        <div>
+            <span class="status-dot"></span> ระบบกำลังทำงานและบันทึกข้อมูลอัตโนมัติ
+        </div>
+
+        <div class="controls">
+            <p>หากมีการเพิ่มหรือลบนักเรียน กรุณากดปุ่มด้านล่างเพื่ออัปเดตระบบ</p>
+            <a href="{{ url_for('update_db') }}" class="btn-update">
+                🔄 อัปเดตฐานข้อมูล (Update Database)
+            </a>
+        </div>
+
+    </div>
+
+    <div class="footer">
+        Project: Computer Education | Developed using Python Flask & OpenCV
+    </div>
+
+</body>
+</html>
