@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}ตั้งค่าระบบ (System Settings){% endblock %}
+
+{% block content %}
+<style>
+    .settings-container { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.03); padding: 30px; max-width: 600px; margin: 0 auto; }
+    .settings-header { display: flex; align-items: center; gap: 15px; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid #edf2f7; }
+    .settings-header i { font-size: 2rem; color: #4a5568; }
+    .settings-header h2 { margin: 0; color: #2d3748; }
+    
+    .form-group { margin-bottom: 25px; }
+    .form-group label { display: block; font-weight: bold; margin-bottom: 8px; color: #4a5568; }
+    .form-group .help-text { font-size: 0.85rem; color: #a0aec0; margin-bottom: 10px; display: block; }
+    
+    input[type="time"] { width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; font-family: 'Sarabun'; font-size: 16px; }
+    
+    /* สไตล์ Slider */
+    input[type="range"] { width: 100%; cursor: pointer; }
+    .slider-value { text-align: right; font-weight: bold; color: #3182ce; font-size: 1.2rem; margin-top: 5px; }
+    
+    .btn-save { background-color: #ed8936; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 16px; font-family: 'Sarabun'; font-weight: bold; cursor: pointer; width: 100%; transition: 0.3s; }
+    .btn-save:hover { background-color: #dd6b20; }
+</style>
+
+<div class="settings-container">
+    <div class="settings-header">
+        <i class="fas fa-sliders-h"></i>
+        <h2>ตั้งค่าระบบหลัก</h2>
+    </div>
+
+    <form method="POST" action="/settings">
+        <div class="form-group">
+            <label><i class="far fa-clock"></i> เวลาผ่อนผันการเข้าเรียนสาย (นาที)</label>
+            <span class="help-text">ระบบจะอนุญาตให้นักเรียนสแกนหน้าเข้าเรียนได้ภายในระยะเวลานี้หลังจากเริ่มคาบ (เช่น ตั้งไว้ 15 นาที หากเริ่มเรียน 08:30 น. สแกนหลัง 08:45 น. จะถือว่ามาสาย)</span>
+            <input type="number" name="late_grace_mins" value="{{ setting.late_grace_mins }}" min="0" max="60" style="width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 16px;" required>
+        </div>
+
+        <div class="form-group">
+            <label><i class="fas fa-brain"></i> ความเข้มงวดของ AI สแกนใบหน้า (Tolerance)</label>
+            <span class="help-text">ค่าน้อย (0.3) = แม่นยำสูงมาก แต่อาจสแกนติดยาก / ค่ามาก (0.6) = สแกนติดง่าย แต่อาจทักคนผิด (ค่าแนะนำ: 0.45)</span>
+            
+            <input type="range" name="ai_tolerance" id="toleranceSlider" min="0.30" max="0.65" step="0.01" value="{{ setting.ai_tolerance }}">
+            <div class="slider-value">ค่าปัจจุบัน: <span id="toleranceValue">{{ setting.ai_tolerance }}</span></div>
+        </div>
+
+        <button type="submit" class="btn-save"><i class="fas fa-save"></i> บันทึกการตั้งค่า</button>
+    </form>
+</div>
+
+<script>
+    // ทำให้ตัวเลขเปลี่ยนตามแถบเลื่อนแบบ Real-time
+    const slider = document.getElementById("toleranceSlider");
+    const output = document.getElementById("toleranceValue");
+    slider.oninput = function() {
+        output.innerHTML = this.value;
+    }
+</script>
+{% endblock %}

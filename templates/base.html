@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FaceAttend - ระบบจัดการการเข้าเรียน</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Sarabun', sans-serif; 
+            display: flex; 
+            background-color: #f4f7fc; /* สีพื้นหลังเนื้อหาหลัก */
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- สไตล์ Sidebar สีเข้ม --- */
+        .sidebar {
+            width: 260px;
+            background-color: #171923; /* สีพื้นหลัง Sidebar เข้มๆ */
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            padding-top: 20px;
+            box-shadow: 4px 0 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        .sidebar-brand {
+            font-size: 24px;
+            font-weight: 700;
+            padding: 0 25px 20px;
+            border-bottom: 1px solid #2d3748;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .sidebar-brand i { margin-right: 10px; color: #48bb78; } /* ไอคอนแบรนด์สีเขียว */
+
+        .nav-menu { display: flex; flex-direction: column; gap: 5px; padding: 0 15px; }
+
+        .nav-item {
+            padding: 12px 20px;
+            color: #a0aec0; /* สีเทาอ่อน */
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .nav-item i { margin-right: 15px; width: 20px; text-align: center; font-size: 1.1rem; }
+
+        .nav-item:hover { background-color: #2d3748; color: #ffffff; }
+        .nav-item.active { background-color: #2b6cb0; color: #ffffff; box-shadow: 0 4px 6px rgba(43, 108, 176, 0.3); }
+
+        /* --- สไตล์เนื้อหาหลัก --- */
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .top-header h2 { color: #2d3748; font-weight: 700; }
+        
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+        .user-profile img { width: 40px; height: 40px; border-radius: 50%; background-color: #cbd5e0; }
+
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <i class="fas fa-camera-retro"></i> FaceAttend
+        </div>
+        <div class="nav-menu">
+            <a href="/" class="nav-item {% if request.path == '/' or request.path == '/dashboard' %}active{% endif %}"><i class="fas fa-th-large"></i> แดชบอร์ด</a>
+            <a href="/scan" class="nav-item {% if request.path == '/scan' %}active{% endif %}"><i class="fas fa-camera"></i> สแกนใบหน้าเข้าเรียน</a>
+            
+            <a href="/attendance_management" class="nav-item {% if request.path == '/attendance_management' %}active{% endif %}"><i class="far fa-clock"></i> ข้อมูลการเข้าเรียน</a>
+            <a href="/students" class="nav-item {% if request.path == '/students' %}active{% endif %}"><i class="fas fa-user-graduate"></i> จัดการข้อมูลนักเรียน</a>
+            <a href="/subjects" class="nav-item {% if request.path == '/subjects' %}active{% endif %}"><i class="fas fa-book"></i> จัดการข้อมูลวิชา</a>
+            <a href="/reports" class="nav-item {% if request.path == '/reports' %}active{% endif %}"><i class="fas fa-file-alt"></i> รายงาน</a>
+            
+            <a href="/settings" class="nav-item {% if request.path == '/settings' %}active{% endif %}"><i class="fas fa-cog"></i> ตั้งค่า</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="top-header">
+            <h2>{% block title %}ภาพรวมระบบ{% endblock %}</h2>
+            <div class="user-profile">
+                <span>แอดมินระบบ</span>
+                <i class="fas fa-user-circle" style="font-size: 30px;"></i>
+            </div>
+        </div>
+
+        {% block content %}{% endblock %}
+    </div>
+
+</body>
+</html>

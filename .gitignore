@@ -12,3 +12,19 @@ student_info.csv
 # ระบบปฏิบัติการ
 .DS_Store
 Thumbs.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Environments
+venv/
+.env
+
+# Database (ลบออกเพราะเราไม่อยากเอาข้อมูลจริงขึ้น)
+instance/
+*.db
+
+# Face Encodings & Images
+*.pickle
+images_db/

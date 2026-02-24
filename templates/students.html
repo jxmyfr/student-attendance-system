@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}จัดการข้อมูลนักเรียน (Student Management){% endblock %}
+
+{% block content %}
+<style>
+    .student-container { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.03); padding: 25px; }
+    .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 2px solid #edf2f7; }
+    
+    /* สไตล์ปุ่ม */
+    .btn-add { background-color: #3182ce; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-family: 'Sarabun', sans-serif; font-size: 16px; text-decoration: none; transition: background 0.3s; }
+    .btn-add:hover { background-color: #2b6cb0; }
+    .btn-delete { background-color: #e53e3e; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 14px; transition: 0.3s; }
+    .btn-delete:hover { background-color: #c53030; }
+    
+    /* สไตล์ตาราง */
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #edf2f7; }
+    th { background-color: #f7fafc; color: #4a5568; font-weight: 700; }
+    tr:hover { background-color: #ebf8ff; }
+</style>
+
+<div class="student-container">
+    <div class="header-actions">
+        <h3 style="color: #2d3748; margin: 0;"><i class="fas fa-user-graduate"></i> รายชื่อนักเรียนในระบบ</h3>
+        
+        <div style="display: flex; gap: 10px;">
+            <input type="file" id="excelFile" accept=".xlsx" style="display: none;" onchange="uploadExcel()">
+            
+            <button class="btn-add" style="background-color: #38a169;" onclick="document.getElementById('excelFile').click()">
+                <i class="fas fa-file-excel"></i> นำเข้าจาก Excel
+            </button>
+
+            <a href="/register_student" class="btn-add">
+                <i class="fas fa-camera"></i> ลงทะเบียนใบหน้า
+            </a>
+        </div>
+    </div>
+
+    <script>
+    function uploadExcel() {
+        const fileInput = document.getElementById('excelFile');
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // เปลี่ยนตัวชี้เมาส์เป็นรูปนาฬิกาทราย
+        document.body.style.cursor = 'wait';
+
+        fetch('/import_students', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.body.style.cursor = 'default';
+            if (data.status === 'success') {
+                alert("🎉 " + data.message);
+                window.location.reload(); // รีเฟรชหน้าเพื่อโชว์ข้อมูลใหม่
+            } else {
+                alert("❌ ข้อผิดพลาด: " + data.message);
+            }
+            fileInput.value = ''; // รีเซ็ตไฟล์
+        })
+        .catch(error => {
+            document.body.style.cursor = 'default';
+            console.error('Error:', error);
+            alert("❌ เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+            fileInput.value = '';
+        });
+    }
+    </script>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ห้อง</th>        <th>เลขที่</th>       <th>รหัสนักเรียน</th>
+                <th>ชื่อ-นามสกุล (TH)</th>
+                <th style="text-align: center;">จัดการ</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for std in students %}
+            <tr>
+                <td>{{ std.classroom }}</td>
+                <td>{{ std.roll_number }}</td> <td><strong>{{ std.id }}</strong></td>
+                <td>{{ std.name_th }}</td>
+                <td style="text-align: center;">
+                    <a href="{{ url_for('delete_student_route', student_id=std.id) }}" class="btn-delete" 
+                       onclick="return confirm('⚠️ แน่ใจหรือไม่ว่าจะลบข้อมูลของ {{ std.name_th }} ?');">
+                        <i class="fas fa-trash-alt"></i> ลบ
+                    </a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5" style="text-align: center; color: #a0aec0; padding: 30px;">
+                    ยังไม่มีข้อมูลนักเรียนในระบบ
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

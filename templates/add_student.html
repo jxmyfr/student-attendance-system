@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% block title %}ลงทะเบียนใบหน้า (Enroll Face){% endblock %}
+{% block content %}
+<style>
+    .enroll-container { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.03); padding: 30px; display: flex; gap: 30px; flex-wrap: wrap; }
+    .form-section { flex: 1; min-width: 300px; }
+    .camera-section { flex: 1; min-width: 300px; text-align: center; }
+    
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 5px; color: #4a5568; font-weight: bold; }
+    /* เปลี่ยนหน้าตา Dropdown ให้สวยงาม */
+    .form-group select, .form-group input { width: 100%; padding: 12px; border: 1px solid #cbd5e0; border-radius: 6px; font-family: 'Sarabun', sans-serif; font-size: 15px; background-color: #f8fafc; }
+    .form-group select:focus { border-color: #3182ce; outline: none; }
+    
+    #videoElement { width: 100%; max-width: 400px; border-radius: 8px; border: 3px solid #2d3748; background: #000; transform: scaleX(-1); }
+    
+    .btn-action { background-color: #3182ce; color: white; border: none; padding: 12px; border-radius: 6px; font-size: 15px; cursor: pointer; flex: 1; font-family: 'Sarabun'; transition: 0.3s; }
+    .btn-action:hover { background-color: #2b6cb0; }
+    .btn-action:disabled { background-color: #a0aec0; cursor: not-allowed; }
+    
+    .btn-upload { background-color: #48bb78; color: white; border: none; padding: 12px; border-radius: 6px; font-size: 15px; cursor: pointer; flex: 1; font-family: 'Sarabun'; transition: 0.3s; }
+    .btn-upload:hover { background-color: #38a169; }
+
+    .btn-save { background-color: #ed8936; color: white; border: none; padding: 12px 20px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; width: 100%; font-family: 'Sarabun'; transition: 0.3s; margin-top: 15px; }
+    .btn-save:hover { background-color: #dd6b20; }
+    
+    .status-text { margin-top: 15px; font-weight: bold; color: #4a5568; }
+    #snapshots { display: flex; gap: 5px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+    #snapshots img { width: 50px; height: 50px; border-radius: 4px; object-fit: cover; border: 2px solid #48bb78; }
+</style>
+
+<div class="enroll-container">
+    <div class="form-section">
+        <h3 style="margin-top: 0; color: #2d3748;"><i class="fas fa-list-ul"></i> เลือกข้อมูลนักเรียน</h3>
+        
+        <div class="form-group">
+            <label>1. เลือกชั้นเรียน / ห้อง</label>
+            <select id="stu_class" onchange="loadStudents()">
+                <option value="">-- กำลังโหลดข้อมูล... --</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>2. เลือกชื่อนักเรียน</label>
+            <select id="stu_id">
+                <option value="">-- กรุณาเลือกชั้นเรียนก่อน --</option>
+            </select>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #ebf8ff; border-radius: 8px; font-size: 0.9rem; color: #2b6cb0;">
+            <i class="fas fa-info-circle"></i> <b>หมายเหตุ:</b> รายชื่อจะแสดงเฉพาะนักเรียนที่มีข้อมูลอยู่ในระบบแล้ว หากไม่พบชื่อ กรุณาเพิ่มข้อมูลนักเรียนเข้าสู่ระบบก่อน
+        </div>
+    </div>
+
+    <div class="camera-section">
+        <video id="videoElement" autoplay playsinline></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+        
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button class="btn-action" id="captureBtn" onclick="startCapture()">
+                <i class="fas fa-camera"></i> ถ่ายรูป (กล้อง)
+            </button>
+            <button class="btn-upload" onclick="document.getElementById('fileUpload').click()">
+                <i class="fas fa-folder-open"></i> อัปโหลดรูปภาพ
+            </button>
+            <input type="file" id="fileUpload" multiple accept="image/*" style="display: none;">
+        </div>
+
+        <div id="snapshots"></div>
+        <p class="status-text" id="statusText">กรุณาเลือกชื่อนักเรียนและวิธีเพิ่มรูปภาพ</p>
+        
+        <button class="btn-save" id="saveBtn" style="display: none;" onclick="submitDataToServer()">
+            <i class="fas fa-save"></i> ยืนยันข้อมูลและให้ AI เรียนรู้ใบหน้า
+        </button>
+    </div>
+</div>
+
+<script>
+    // --- โหลดข้อมูล Dropdown อัตโนมัติเมื่อเปิดหน้าเว็บ ---
+    window.onload = function() {
+        fetch('/api/classes')
+            .then(response => response.json())
+            .then(classes => {
+                const classSelect = document.getElementById('stu_class');
+                classSelect.innerHTML = '<option value="">-- เลือกชั้นเรียน --</option>';
+                classes.forEach(c => {
+                    let opt = document.createElement('option');
+                    opt.value = c;
+                    opt.innerHTML = c;
+                    classSelect.appendChild(opt);
+                });
+            });
+    };
+
+    // --- โหลดรายชื่อนักเรียน เมื่อเลือกชั้นเรียน ---
+    function loadStudents() {
+        const className = document.getElementById('stu_class').value;
+        const studentSelect = document.getElementById('stu_id');
+        
+        if (!className) {
+            studentSelect.innerHTML = '<option value="">-- กรุณาเลือกชั้นเรียนก่อน --</option>';
+            return;
+        }
+
+        studentSelect.innerHTML = '<option value="">-- กำลังโหลดรายชื่อ... --</option>';
+        fetch(`/api/students/${encodeURIComponent(className)}`)
+            .then(response => response.json())
+            .then(students => {
+                studentSelect.innerHTML = '<option value="">-- เลือกชื่อนักเรียน --</option>';
+                students.forEach(s => {
+                    let opt = document.createElement('option');
+                    opt.value = s.id;
+                    opt.innerHTML = `${s.id} - ${s.name_th}`;
+                    studentSelect.appendChild(opt);
+                });
+            });
+    }
+
+    // --- ส่วนกล้องและการบันทึกรูป (ปรับปรุงให้ใช้รหัสจาก Dropdown) ---
+    const video = document.getElementById('videoElement');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    let capturedImages = [];
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => { video.srcObject = stream; })
+        .catch(err => { console.error("ไม่สามารถเข้าถึงกล้องได้: ", err); });
+
+    function startCapture() {
+        const studentId = document.getElementById('stu_id').value;
+        if (!studentId) { alert("กรุณาเลือกชื่อนักเรียนจาก Dropdown ก่อนครับ!"); return; }
+
+        const btn = document.getElementById('captureBtn');
+        const status = document.getElementById('statusText');
+        btn.disabled = true;
+        capturedImages = [];
+        document.getElementById('snapshots').innerHTML = '';
+        document.getElementById('saveBtn').style.display = 'none';
+        status.style.color = '#3182ce';
+
+        let count = 0;
+        let captureInterval = setInterval(() => {
+            count++;
+            status.innerText = `📸 กำลังถ่ายรูปที่ ${count}/5 ...`;
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            capturedImages.push(canvas.toDataURL('image/jpeg', 0.9));
+
+            const imgTag = document.createElement('img');
+            imgTag.src = capturedImages[capturedImages.length - 1];
+            document.getElementById('snapshots').appendChild(imgTag);
+
+            if (count >= 5) {
+                clearInterval(captureInterval);
+                btn.disabled = false;
+                status.innerText = "✅ ถ่ายรูปครบ 5 ภาพแล้ว กรุณากดปุ่มยืนยันข้อมูล";
+                status.style.color = '#48bb78';
+                document.getElementById('saveBtn').style.display = 'block';
+            }
+        }, 800);
+    }
+
+    document.getElementById('fileUpload').addEventListener('change', function(e) {
+        if (!document.getElementById('stu_id').value) {
+            alert("กรุณาเลือกชื่อนักเรียนก่อนครับ!"); this.value = ''; return;
+        }
+        const files = e.target.files;
+        if (files.length === 0) return;
+
+        capturedImages = []; document.getElementById('snapshots').innerHTML = '';
+        const status = document.getElementById('statusText');
+        status.innerText = `⏳ กำลังโหลดรูปภาพ...`;
+
+        let loadedCount = 0;
+        Array.from(files).forEach((file, index) => {
+            if(index >= 5) return; 
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                capturedImages.push(event.target.result);
+                const imgTag = document.createElement('img');
+                imgTag.src = event.target.result;
+                document.getElementById('snapshots').appendChild(imgTag);
+                loadedCount++;
+                if (loadedCount === Math.min(files.length, 5)) {
+                    status.innerText = `✅ อัปโหลดรูปภาพสำเร็จ ${loadedCount} ภาพ กรุณากดปุ่มยืนยัน`;
+                    status.style.color = '#48bb78';
+                    document.getElementById('saveBtn').style.display = 'block';
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+
+    function submitDataToServer() {
+        const studentId = document.getElementById('stu_id').value;
+        const studentNameText = document.getElementById('stu_id').options[document.getElementById('stu_id').selectedIndex].text;
+        // แยกเอาเฉพาะชื่อ-นามสกุล (ตัดรหัสข้างหน้าทิ้ง)
+        const name_th = studentNameText.split(' - ')[1] || "";
+        const classroom = document.getElementById('stu_class').value;
+
+        if(!studentId || capturedImages.length === 0) {
+            alert("กรุณาเลือกนักเรียนและเพิ่มรูปภาพก่อนครับ!"); return;
+        }
+
+        const status = document.getElementById('statusText');
+        const saveBtn = document.getElementById('saveBtn');
+        status.innerText = "⏳ กำลังบันทึกข้อมูลและให้ AI เรียนรู้ใบหน้า...";
+        status.style.color = '#ed8936';
+        saveBtn.disabled = true;
+
+        const payload = {
+            student_id: studentId,
+            name_th: name_th,
+            name_en: "", // ไม่ต้องส่งก็ได้เพราะมีใน DB แล้ว
+            classroom: classroom,
+            images: capturedImages
+        };
+
+        fetch('/register_student', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "success") {
+                alert("🎉 บันทึกใบหน้าสำเร็จ! ระบบพร้อมจำหน้านักเรียนคนนี้แล้ว");
+                window.location.href = "/students";
+            } else {
+                alert("เกิดข้อผิดพลาด: " + data.message);
+                saveBtn.disabled = false;
+            }
+        });
+    }
+</script>
+{% endblock %}

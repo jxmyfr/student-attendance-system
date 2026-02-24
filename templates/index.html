@@ -1,123 +1,458 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ระบบเช็กชื่อนักเรียนอัตโนมัติ</title>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Sarabun', sans-serif;
-            background-color: #ecf0f1;
-            margin: 0;
-            padding: 0;
-            text-align: center;
-        }
+{% extends 'base.html' %} {% block title %}เช็กชื่อเข้าชั้นเรียน (Attendance
+Kiosk){% endblock %} {% block content %}
+<style>
+  .kiosk-container {
+    max-width: 600px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    padding: 30px;
+    text-align: center;
+  }
+  .step-section {
+    display: none;
+  } /* ซ่อนทุกสเต็ปไว้ก่อน ควบคุมด้วย JS */
+  .step-section.active {
+    display: block;
+    animation: fadeIn 0.5s;
+  }
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 
-        .navbar {
-            background-color: #2c3e50;
-            color: white;
-            padding: 15px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .navbar h1 { margin: 0; font-size: 1.5rem; }
-        .navbar p { margin: 5px 0 0; font-size: 0.9rem; color: #bdc3c7; }
+  /* สไตล์ Dropdown และปุ่ม */
+  .form-group {
+    text-align: left;
+    margin-bottom: 20px;
+  }
+  .form-group label {
+    font-weight: bold;
+    color: #4a5568;
+    margin-bottom: 8px;
+    display: block;
+  }
+  select,
+  input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #cbd5e0;
+    border-radius: 6px;
+    font-family: "Sarabun";
+    font-size: 16px;
+  }
 
-        .container {
-            max-width: 900px;
-            margin: 30px auto;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-        }
+  .btn {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-family: "Sarabun";
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+    width: 100%;
+    margin-top: 10px;
+  }
+  .btn-primary {
+    background-color: #3182ce;
+    color: white;
+  }
+  .btn-primary:hover {
+    background-color: #2b6cb0;
+  }
+  .btn-success {
+    background-color: #48bb78;
+    color: white;
+  }
+  .btn-success:hover {
+    background-color: #38a169;
+  }
+  .btn-warning {
+    background-color: #ecc94b;
+    color: #744210;
+  }
 
-        .video-wrapper {
-            position: relative;
-            margin-bottom: 20px;
-            border: 5px solid #34495e;
-            border-radius: 8px;
-            overflow: hidden;
-            display: inline-block;
-            background-color: #000;
-        }
+  /* สไตล์กล้อง */
+  #videoElement {
+    width: 100%;
+    border-radius: 8px;
+    border: 3px solid #2d3748;
+    background: #000;
+    transform: scaleX(-1);
+    margin-bottom: 15px;
+  }
+  #snapshotImage {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #48bb78;
+    margin: 0 auto 20px;
+    display: block;
+  }
 
-        img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
+  .student-info-card {
+    background: #f7fafc;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 20px;
+  }
+  .student-info-card h2 {
+    color: #2d3748;
+    margin: 0 0 10px 0;
+  }
+  .student-info-card p {
+    color: #718096;
+    margin: 5px 0;
+    font-size: 1.1rem;
+  }
+</style>
 
-        .controls {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
+<div class="kiosk-container">
+  <div id="step1" class="step-section active">
+    <h2 style="color: #2d3748; margin-bottom: 25px">
+      <i class="fas fa-chalkboard-teacher"></i> ตั้งค่าการเช็กชื่อ
+    </h2>
 
-        .btn-update {
-            background-color: #e67e22;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            font-size: 16px;
-            font-family: 'Sarabun', sans-serif;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background 0.3s;
-            text-decoration: none;
-            display: inline-block;
-        }
-
-        .btn-update:hover {
-            background-color: #d35400;
-        }
-
-        .status-dot {
-            height: 10px;
-            width: 10px;
-            background-color: #2ecc71;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
-        }
-
-        .footer {
-            margin-top: 40px;
-            color: #7f8c8d;
-            font-size: 0.8rem;
-        }
-    </style>
-</head>
-<body>
-
-    <div class="navbar">
-        <h1>Student Attendance System</h1>
-        <p>ระบบบันทึกเวลาเรียนด้วยใบหน้า (Face Recognition)</p>
+    <div class="form-group">
+      <label>1. เลือกชั้นเรียนที่กำลังสอน</label>
+      <select id="classSelect">
+        <option value="">-- กำลังโหลดข้อมูลชั้นเรียน... --</option>
+      </select>
     </div>
 
-    <div class="container">
-        
-        <div class="video-wrapper">
-            <img src="{{ url_for('video_feed') }}" alt="Live Video Feed">
+    <div class="form-group">
+        <label>2. ค้นหารายวิชา (เลือกอย่างใดอย่างหนึ่ง)</label>
+    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+        <select id="subjectIdSelect" onchange="syncSubject('id')" style="flex: 1;">
+            <option value="">-- เลือกรหัสวิชา --</option>
+        </select>
+        <select id="subjectNameSelect" onchange="syncSubject('name')" style="flex: 2;">
+            <option value="">-- เลือกชื่อรายวิชา --</option>
+        </select>
+    </div>
+    <div id="teacherDisplay" style="padding: 10px; background: #edf2f7; border-radius: 6px; font-size: 0.9rem; color: #4a5568; border-left: 4px solid #3182ce;">
+        <i class="fas fa-user-tie"></i> ผู้สอน: <span id="teacherName">-</span>
+    </div>
+</div>
+
+    <div class="form-group">
+            <label>3. เลือกคาบเรียน (อิงตามตารางสอน)</label>
+            <select id="startTimeInput" required>
+                <option value="">-- เลือกคาบเรียน --</option>
+                <option value="08:30">คาบ 1 (08:30 - 09:20)</option>
+                <option value="09:20">คาบ 2 (09:20 - 10:10)</option>
+                <option value="10:20">คาบ 3 (10:20 - 11:10)</option>
+                <option value="11:10">คาบ 4 (11:10 - 12:00)</option>
+                <option value="13:00">คาบ 6 (13:00 - 13:50)</option>
+                <option value="13:50">คาบ 7 (13:50 - 14:40)</option>
+                <option value="14:40">คาบ 8 (14:40 - 15:30)</option>
+                <option value="15:30">คาบ 9 (15:30 - 16:20)</option>
+            </select>
         </div>
 
-        <div>
-            <span class="status-dot"></span> ระบบกำลังทำงานและบันทึกข้อมูลอัตโนมัติ
-        </div>
+    <button class="btn btn-primary" onclick="goToStep2()">
+      <i class="fas fa-camera"></i> เริ่มเปิดกล้องเช็กชื่อ
+    </button>
+  </div>
 
-        <div class="controls">
-            <p>หากมีการเพิ่มหรือลบนักเรียน กรุณากดปุ่มด้านล่างเพื่ออัปเดตระบบ</p>
-            <a href="{{ url_for('update_db') }}" class="btn-update">
-                🔄 อัปเดตฐานข้อมูล (Update Database)
-            </a>
-        </div>
+  <div id="step2" class="step-section">
+    <h3
+      id="currentClassDisplay"
+      style="color: #2b6cb0; margin-bottom: 15px"
+    ></h3>
+    <video id="videoElement" autoplay playsinline></video>
+    <canvas id="canvas" style="display: none"></canvas>
 
+    <button class="btn btn-primary" id="captureBtn" onclick="processFace()">
+      <i class="fas fa-camera"></i> กดเพื่อถ่ายรูป (สแกนหน้า)
+    </button>
+    <button
+      class="btn btn-warning"
+      onclick="goToStep1()"
+      style="margin-top: 15px"
+    >
+      <i class="fas fa-arrow-left"></i> กลับไปตั้งค่า
+    </button>
+  </div>
+
+  <div id="step3" class="step-section">
+    <h3 style="color: #48bb78; margin-bottom: 20px">
+      <i class="fas fa-check-circle"></i> AI ตรวจพบใบหน้า
+    </h3>
+
+    <img id="snapshotImage" src="" alt="Snapshot" />
+
+    <div class="student-info-card">
+      <h2 id="resultName">กำลังประมวลผล...</h2>
+      <p><strong>รหัสนักเรียน:</strong> <span id="resultId">-</span></p>
+      <p>
+        <strong>ห้อง:</strong> <span id="resultClass">-</span> |
+        <strong>เลขที่:</strong> <span id="resultRoll">-</span>
+      </p>
     </div>
 
-    <div class="footer">
-        Project: Computer Education | Developed using Python Flask & OpenCV
+    <div style="display: flex; gap: 10px">
+      <button class="btn btn-success" onclick="confirmAttendance()">
+        <i class="fas fa-save"></i> ยืนยันการเข้าเรียน
+      </button>
+      <button class="btn btn-warning" onclick="goToStep2()">
+        <i class="fas fa-redo"></i> ถ่ายใหม่
+      </button>
     </div>
+  </div>
+</div>
 
-</body>
-</html>
+<script>
+  // ตัวแปรเก็บข้อมูล
+  let selectedClass = "";
+  let selectedSubject = "";
+  let currentStudentId = "";
+
+  const video = document.getElementById("videoElement");
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  let stream = null;
+
+  // โหลดรายชื่อห้องและวิชาตอนเปิดหน้าเว็บ
+  window.onload = function () {
+    let allSubjects = []; // ตัวแปรเก็บข้อมูลวิชาทั้งหมด
+    // --- โค้ดใหม่: คำนวณเวลาและเลือกคาบเรียนให้อัตโนมัติ ---
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMin = now.getMinutes();
+    const timeVal = currentHour * 60 + currentMin; // แปลงเป็นนาที
+
+    const startTimeInput = document.getElementById('startTimeInput');
+
+    // โหลดรายวิชาจาก API
+    fetch("/api/subjects")
+        .then((response) => response.json())
+        .then((subjects) => {
+            allSubjects = subjects; // เก็บข้อมูลไว้ใช้งาน
+            const idSelect = document.getElementById("subjectIdSelect");
+            const nameSelect = document.getElementById("subjectNameSelect");
+
+            subjects.forEach((s) => {
+                idSelect.innerHTML += `<option value="${s.id}">${s.id}</option>`;
+                nameSelect.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+            });
+        });
+    
+    // เทียบเวลาเพื่อเลือกคาบ (อิงตามตารางสอน)
+    if (timeVal >= 510 && timeVal < 560) { startTimeInput.value = "08:30"; }       // 08:30 - 09:20 (คาบ 1)
+    else if (timeVal >= 560 && timeVal < 620) { startTimeInput.value = "09:20"; }  // 09:20 - 10:20 (คาบ 2)
+    else if (timeVal >= 620 && timeVal < 670) { startTimeInput.value = "10:20"; }  // 10:20 - 11:10 (คาบ 3)
+    else if (timeVal >= 670 && timeVal < 780) { startTimeInput.value = "11:10"; }  // 11:10 - 13:00 (คาบ 4 + พักเที่ยง)
+    else if (timeVal >= 780 && timeVal < 830) { startTimeInput.value = "13:00"; }  // 13:00 - 13:50 (คาบ 6)
+    else if (timeVal >= 830 && timeVal < 880) { startTimeInput.value = "13:50"; }  // 13:50 - 14:40 (คาบ 7)
+    else if (timeVal >= 880 && timeVal < 930) { startTimeInput.value = "14:40"; }  // 14:40 - 15:30 (คาบ 8)
+    else if (timeVal >= 930) { startTimeInput.value = "15:30"; }                   // 15:30 ขึ้นไป (คาบ 9)
+
+    // --- โหลดห้องเรียน (เหมือนเดิม) ---
+    fetch("/api/classes")
+      .then((response) => response.json())
+      .then((classes) => {
+        const classSelect = document.getElementById("classSelect");
+        classSelect.innerHTML = '<option value="">-- เลือกชั้นเรียน --</option>';
+        classes.forEach((c) => {
+          classSelect.innerHTML += `<option value="${c}">${c}</option>`;
+        });
+      });
+
+    // --- โหลดรายวิชา (เหมือนเดิม) ---
+    fetch("/api/subjects")
+      .then((response) => response.json())
+      .then((subjects) => {
+        const subSelect = document.getElementById("subjectSelect");
+        subSelect.innerHTML = '<option value="">-- เลือกรายวิชา --</option>';
+        subjects.forEach((s) => {
+          subSelect.innerHTML += `<option value="${s.name}">${s.id} - ${s.name}</option>`;
+        });
+      });
+};
+
+  function showStep(stepNumber) {
+    document
+      .querySelectorAll(".step-section")
+      .forEach((el) => el.classList.remove("active"));
+    document.getElementById("step" + stepNumber).classList.add("active");
+  }
+
+  function goToStep1() {
+    if (stream) {
+      stream.getTracks().forEach((track) => track.stop());
+    } // ปิดกล้อง
+    showStep(1);
+  }
+
+  function goToStep2() {
+    selectedClass = document.getElementById("classSelect").value;
+    selectedSubject = document.getElementById("subjectSelect").value;
+
+    if (!selectedClass || !selectedSubject) {
+      alert("กรุณาเลือกห้องและกรอกชื่อวิชาก่อนครับ!");
+      return;
+    }
+
+    document.getElementById("currentClassDisplay").innerText =
+      `วิชา: ${selectedSubject} (${selectedClass})`;
+    showStep(2);
+
+    // เปิดกล้อง
+    navigator.mediaDevices
+      .getUserMedia({ video: true })
+      .then((s) => {
+        stream = s;
+        video.srcObject = stream;
+      })
+      .catch((err) => {
+        alert("ไม่สามารถเข้าถึงกล้องได้");
+      });
+  }
+
+  function processFace() {
+    const btn = document.getElementById("captureBtn");
+    btn.innerHTML =
+      '<i class="fas fa-spinner fa-spin"></i> กำลังประมวลผล AI...';
+    btn.disabled = true;
+
+    // ถ่ายรูป
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imgBase64 = canvas.toDataURL("image/jpeg", 0.9);
+
+    document.getElementById("snapshotImage").src = imgBase64;
+
+    // ส่งภาพให้ AI ทาย
+    fetch("/recognize_face", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: imgBase64 }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        btn.innerHTML =
+          '<i class="fas fa-camera"></i> กดเพื่อถ่ายรูป (สแกนหน้า)';
+        btn.disabled = false;
+
+        if (data.status === "success") {
+          // ถ้าสแกนเจอเด็ก แต่คนละห้องกับที่ตั้งค่าไว้
+          if (data.classroom !== selectedClass) {
+            alert(
+              `⚠️ แจ้งเตือน: ${data.name_th} อยู่ห้อง ${data.classroom} ไม่ใช่ห้อง ${selectedClass} ที่กำลังเรียนอยู่ตอนนี้!`,
+            );
+            return; // ยกเลิกการไปหน้ายืนยัน
+          }
+
+          // แสดงผลข้อมูล
+          currentStudentId = data.student_id;
+          document.getElementById("resultName").innerText = data.name_th;
+          document.getElementById("resultId").innerText = data.student_id;
+          document.getElementById("resultClass").innerText = data.classroom;
+          document.getElementById("resultRoll").innerText = data.roll_number;
+
+          showStep(3); // ไปหน้ายืนยัน
+        } else {
+          alert("❌ " + data.message);
+        }
+      })
+      .catch((err) => {
+        btn.innerHTML =
+          '<i class="fas fa-camera"></i> กดเพื่อถ่ายรูป (สแกนหน้า)';
+        btn.disabled = false;
+        alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
+      });
+  }
+
+  const startTime = document.getElementById('startTimeInput').value; // ดึงเวลามา
+
+  function confirmAttendance() {
+    fetch("/save_attendance", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        student_id: currentStudentId, 
+        subject: selectedSubject,
+        start_time: startTime // ส่งเวลาเริ่มคาบไปด้วย
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "success") {
+          alert("✅ " + data.message);
+          goToStep2(); // กลับไปหน้ากล้องเพื่อเช็กชื่อคนต่อไป
+        } else if (data.status === "warning") {
+          alert("⚠️ " + data.message);
+          goToStep2();
+        }
+      });
+  }
+
+  function syncSubject(type) {
+    const idSelect = document.getElementById("subjectIdSelect");
+    const nameSelect = document.getElementById("subjectNameSelect");
+    const teacherName = document.getElementById("teacherName");
+    
+    let selectedSub;
+    if (type === 'id') {
+        selectedSub = allSubjects.find(s => s.id === idSelect.value);
+        if (selectedSub) nameSelect.value = selectedSub.name;
+    } else {
+        selectedSub = allSubjects.find(s => s.name === nameSelect.value);
+        if (selectedSub) idSelect.value = selectedSub.id;
+    }
+
+    if (selectedSub) {
+        teacherName.innerText = selectedSub.teacher || "ไม่ระบุชื่อผู้สอน";
+        // เก็บค่าไว้ใช้ตอนบันทึก (เราจะใช้ชื่อวิชาเป็นหลัก)
+        window.selectedSubjectFinal = selectedSub.name; 
+    } else {
+        teacherName.innerText = "-";
+        window.selectedSubjectFinal = "";
+    }
+}
+
+    function filterSubjectsByClass() {
+    const selectedClass = document.getElementById("classSelect").value; // เช่น "ม.1/1"
+    if (!selectedClass) return;
+
+    // ดึงระดับชั้นออกมา (ม.1/1 -> ม.1)
+    const gradeLevel = selectedClass.split('/')[0].trim(); 
+
+    const idSelect = document.getElementById("subjectIdSelect");
+    const nameSelect = document.getElementById("subjectNameSelect");
+
+    // ล้างข้อมูลเดิมใน Dropdown
+    idSelect.innerHTML = '<option value="">-- เลือกรหัสวิชา --</option>';
+    nameSelect.innerHTML = '<option value="">-- เลือกชื่อรายวิชา --</option>';
+
+    // กรองเฉพาะวิชาที่ตรงกับระดับชั้น
+    const filtered = allSubjects.filter(s => s.level === gradeLevel);
+
+    filtered.forEach((s) => {
+        idSelect.innerHTML += `<option value="${s.id}">${s.id}</option>`;
+        nameSelect.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+    });
+    
+    // รีเซ็ตชื่อผู้สอนเป็นค่าว่างก่อน
+    document.getElementById("teacherName").innerText = "-";
+}
+
+// นำไปผูกกับเหตุการณ์เปลี่ยนห้องเรียน
+document.getElementById("classSelect").onchange = function() {
+    filterSubjectsByClass();
+};
+
+</script>
+{% endblock %}

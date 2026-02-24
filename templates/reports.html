@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}รายงานการเข้าเรียน (Attendance Reports){% endblock %}
+
+{% block content %}
+<style>
+    .report-container {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.03);
+        padding: 25px;
+    }
+    .header-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #edf2f7;
+    }
+    .btn-export {
+        background-color: #38a169; /* สีเขียวสไตล์ Excel */
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-family: 'Sarabun', sans-serif;
+        font-size: 16px;
+        text-decoration: none;
+        transition: background 0.3s;
+    }
+    .btn-export:hover { background-color: #2f855a; }
+    
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #edf2f7; }
+    th { background-color: #f7fafc; color: #4a5568; font-weight: 700; }
+    tr:hover { background-color: #ebf8ff; }
+    
+    .badge { padding: 5px 10px; border-radius: 15px; font-size: 0.85rem; font-weight: bold; color: white; }
+    .bg-success { background-color: #48bb78; }
+    .bg-warning { background-color: #ecc94b; color: #744210; }
+</style>
+
+<div class="report-container">
+    <div class="header-actions">
+        <h3 style="color: #2d3748; margin: 0;"><i class="fas fa-list-alt"></i> ประวัติการสแกนใบหน้าทั้งหมด</h3>
+        
+        <a href="{{ url_for('export_csv') }}" class="btn-export">
+            <i class="fas fa-file-excel"></i> ดาวน์โหลด Excel (CSV)
+        </a>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>วันที่</th>
+                <th>เวลา</th>
+                <th>รหัส</th>
+                <th>ชื่อ-นามสกุล</th>
+                <th>ชั้นเรียน</th>
+                <th>สถานะ</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for att, std in records %}
+            <tr>
+                <td>{{ att.date.strftime('%d/%m/%Y') }}</td>
+                <td>{{ att.time.strftime('%H:%M:%S') }} น.</td>
+                <td><strong>{{ std.id }}</strong></td>
+                <td>{{ std.name_th }}</td>
+                <td>{{ std.classroom }}</td>
+                <td>
+                    {% if att.status == 'Present' %}
+                        <span class="badge bg-success">มาเรียน</span>
+                    {% elif att.status == 'Late' %}
+                        <span class="badge bg-warning">มาสาย</span>
+                    {% else %}
+                        <span class="badge bg-success">{{ att.status }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="text-align: center; color: #a0aec0; padding: 30px;">
+                    ยังไม่มีข้อมูลประวัติการสแกนในระบบ
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

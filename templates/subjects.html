@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}จัดการข้อมูลวิชา (Subject Management){% endblock %}
+
+{% block content %}
+<style>
+    .subject-container { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.03); padding: 25px; margin-bottom: 20px;}
+    .form-row { display: flex; gap: 15px; margin-bottom: 20px; align-items: flex-end; }
+    .form-group { flex: 1; }
+    .form-group label { display: block; font-weight: bold; margin-bottom: 5px; color: #4a5568; }
+    .form-group input { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; font-family: 'Sarabun'; }
+    .btn-add { background-color: #3182ce; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; height: 43px; font-family: 'Sarabun'; }
+    .btn-delete { background-color: #e53e3e; color: white; padding: 6px 12px; border-radius: 4px; text-decoration: none; font-size: 14px; }
+    
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #edf2f7; }
+    th { background-color: #f7fafc; }
+</style>
+
+<div class="subject-container">
+    <h3 style="margin-top:0;"><i class="fas fa-plus-circle"></i> เพิ่มรายวิชาใหม่</h3>
+    <form method="POST" action="/subjects" class="form-row">
+        <div class="form-group">
+            <label>รหัสวิชา</label>
+            <input type="text" name="sub_id" placeholder="เช่น ว30101" required>
+        </div>
+        <div class="form-group">
+            <label>ชื่อรายวิชา</label>
+            <input type="text" name="sub_name" placeholder="เช่น วิทยาศาสตร์พื้นฐาน" required>
+        </div>
+        <div class="form-group">
+            <label>ครูผู้สอน</label>
+            <input type="text" name="sub_teacher" placeholder="ชื่อครูผู้สอน">
+        </div>
+        <button type="submit" class="btn-add"><i class="fas fa-save"></i> บันทึก</button>
+
+        <div class="form-group">
+            <label>ระดับชั้น</label>
+                <select name="sub_level" required style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #cbd5e0;">
+                    <option value="ม.1">ม.1</option>
+                    <option value="ม.2">ม.2</option>
+                    <option value="ม.3">ม.3</option>
+                    <option value="ม.4">ม.4</option>
+                    <option value="ม.5">ม.5</option>
+                    <option value="ม.6">ม.6</option>
+                </select>
+        </div>
+
+    </form>
+</div>
+
+<div class="subject-container">
+    <h3 style="margin-top:0;"><i class="fas fa-book"></i> รายวิชาในระบบ</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>รหัสวิชา</th>
+                <th>ชื่อรายวิชา</th>
+                <th>ครูผู้สอน</th>
+                <th>จัดการ</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sub in subjects %}
+            <tr>
+                <td><strong>{{ sub.id }}</strong></td>
+                <td>{{ sub.name }}</td>
+                <td>{{ sub.teacher }}</td>
+                <td>
+                    <a href="{{ url_for('delete_subject', subject_id=sub.id) }}" class="btn-delete" onclick="return confirm('ลบวิชานี้ใช่หรือไม่?');">ลบ</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="text-align: center;">ยังไม่มีรายวิชาในระบบ</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
