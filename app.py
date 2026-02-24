@@ -45,7 +45,7 @@ class Student(db.Model):
     name_th = db.Column(db.String(100), nullable=False)
     name_en = db.Column(db.String(100))
     classroom = db.Column(db.String(50))
-    # สร้างความสัมพันธ์กับตาราง Attendance
+    attendances = db.relationship('Attendance', backref='student', lazy=True)
 
 class Attendance(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -53,7 +53,7 @@ class Attendance(db.Model):
     date = db.Column(db.Date, nullable=False)
     time = db.Column(db.Time, nullable=False)
     status = db.Column(db.String(20), nullable=False)
-    subject = db.Column(db.String(100))  # <--- เพิ่มบรรทัดนี้เพื่อเก็บชื่อวิชา
+    subject = db.Column(db.String(100))
 
 # สร้าง Database อัตโนมัติถ้ายังไม่มี
 with app.app_context():
@@ -61,22 +61,22 @@ with app.app_context():
 
 # --- GLOBAL VARIABLES ---
 known_face_encodings = []
-known_face_names = []
+known_face_ids = []
 
 # --- HELPER FUNCTIONS ---
 
 def load_encodings():
     """โหลดข้อมูล Encodings จากไฟล์ Pickle"""
-    global known_face_encodings, known_face_names
+    global known_face_encodings, known_face_ids
     print("--- Loading Face Data ---")
     if os.path.exists(encoding_file):
         data = pickle.loads(open(encoding_file, "rb").read())
         known_face_encodings = data["encodings"]
-        known_face_names = data["names"]
-        print(f"Loaded {len(known_face_names)} faces.")
+        known_face_ids = data["names"]  # <--- โหลด names (ซึ่งคือ ID) เข้า known_face_ids
+        print(f"Loaded {len(known_face_ids)} faces.")
     else:
         print("Warning: Pickle file not found.")
-        known_face_encodings, known_face_names = [], []
+        known_face_encodings, known_face_ids = [], []
 
 def put_thai_text(img, text, position, font_size=30, color=(255, 255, 255)):
     """วาดภาษาไทยบนภาพ (อัปเกรดระบบค้นหาฟอนต์อัตโนมัติ)"""
@@ -265,6 +265,7 @@ def delete_student_route(student_id):
     # 3. อัปเดตไฟล์ AI (แปลงใบหน้าใหม่)
     from encode_faces import create_encodings
     create_encodings()
+    load_encodings()
     
     # เสร็จแล้วให้รีเฟรชกลับมาหน้าเดิม
     return redirect(url_for('students'))
@@ -288,7 +289,7 @@ def register_student():
             return jsonify({"status": "error", "message": "ข้อมูลไม่ครบถ้วน"})
 
         # 1. บันทึกประวัติลง Database SQLite
-        existing_student = Student.query.get(student_id)
+        existing_student = db.session.get(Student, student_id)
         if not existing_student:
             new_student = Student(id=student_id, name_th=name_th, name_en=name_en, classroom=classroom)
             db.session.add(new_student)
@@ -310,9 +311,10 @@ def register_student():
 
         # 4. เรียกฟังก์ชัน AI ให้เรียนรู้ใบหน้าใหม่ทันที
         from encode_faces import create_encodings
-        create_encodings()
+        create_encodings() 
+        load_encodings() # โหลดค่าใหม่เข้า RAM ทันทีเพื่อให้สแกนติดได้เลย
 
-        return jsonify({"status": "success", "message": "ลงทะเบียนและอัปเดต AI สำเร็จ!"})
+        return jsonify({"status": "success", "message": "ลงทะเบียนและอัพเดต AI สำเร็จ!"})
 
 @app.route('/api/classes')
 def get_classes():
@@ -374,6 +376,10 @@ def import_students():
                     success_count += 1
             
             db.session.commit()
+            from encode_faces import create_encodings
+            create_encodings()
+            load_encodings()
+            
             return jsonify({"status": "success", "message": f"นำเข้า/อัปเดตข้อมูลสำเร็จ {success_count} รายการ!"})
         except Exception as e:
             return jsonify({"status": "error", "message": f"เกิดข้อผิดพลาดในการอ่านไฟล์: {str(e)}"})
@@ -385,56 +391,47 @@ from datetime import datetime
 
 @app.route('/recognize_face', methods=['POST'])
 def recognize_face():
-    """API รับรูปภาพ 1 รูปจากหน้าเว็บ มาให้ AI ทายชื่อ"""
-    data = request.json
-    image_data = data.get('image')
-    
-    face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
-    if not face_encodings:
-        return jsonify({'status': 'not_found', 'message': 'ไม่พบใบหน้าในรูปภาพ'})
+    global known_face_encodings, known_face_ids
+    try:
+        data = request.json
+        img_data = data.get('image')
         
-    # ดึงค่า AI จากการตั้งค่า
-    setting = SystemSetting.query.first()
-    tolerance_val = setting.ai_tolerance if setting else 0.45
-    
-    encodeFace = face_encodings[0]
-    # ใช้ตัวแปร tolerance_val ตรงนี้
-    matches = face_recognition.compare_faces(known_face_encodings, encodeFace, tolerance=tolerance_val)
+        if not img_data:
+            return jsonify({"status": "error", "message": "ไม่ได้รับข้อมูลรูปภาพ"})
+
+        # แปลงรูปภาพ
+        format, imgstr = img_data.split(';base64,')
+        image_bytes = base64.b64decode(imgstr)
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+        # ค้นหาใบหน้า
+        face_locations = face_recognition.face_locations(rgb_img)
+        if not face_locations:
+            return jsonify({"status": "error", "message": "ไม่พบใบหน้าในรูปภาพ"})
+
+        face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
         
-    # แปลงไฟล์ภาพ Base64 ให้เป็นภาพที่ OpenCV และ Face_recognition อ่านได้
-    img_data = image_data.split(',')[1]
-    img_bytes = base64.b64decode(img_data)
-    np_arr = np.frombuffer(img_bytes, np.uint8)
-    img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-    rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    
-    # ให้ AI หาใบหน้าและสร้างชุดตัวเลข
-    face_locations = face_recognition.face_locations(rgb_img)
-    face_encodings = face_recognition.face_encodings(rgb_img, face_locations)
-    
-    if not face_encodings:
-        return jsonify({'status': 'not_found', 'message': 'ไม่พบใบหน้าในรูปภาพ กรุณาถ่ายใหม่'})
-        
-    # เอาหน้าแรกที่เจอไปเทียบกับฐานข้อมูล
-    encodeFace = face_encodings[0]
-    matches = face_recognition.compare_faces(known_face_encodings, encodeFace, tolerance=0.45)
-    faceDis = face_recognition.face_distance(known_face_encodings, encodeFace)
-    
-    if len(faceDis) > 0:
-        matchIndex = np.argmin(faceDis)
-        if matches[matchIndex]:
-            student_id = known_face_names[matchIndex]
-            student = Student.query.get(student_id)
-            if student:
-                return jsonify({
-                    'status': 'success',
-                    'student_id': student.id,
-                    'name_th': student.name_th,
-                    'classroom': student.classroom,
-                    'roll_number': student.roll_number
-                })
+        for face_encoding in face_encodings:
+            matches = face_recognition.compare_faces(known_face_encodings, face_encoding, tolerance=0.5)
+            if True in matches:
+                first_match_index = matches.index(True)
+                # ตอนนี้ student_id จะไม่ Error แล้วครับ
+                student_id = known_face_ids[first_match_index]
+                student = db.session.get(Student, student_id)
                 
-    return jsonify({'status': 'unknown', 'message': 'ไม่รู้จักใบหน้านี้ (Unknown)'})
+                if student is not None:
+                    return jsonify({
+                        "status": "success",
+                        "student_id": student.id,
+                        "name_th": student.name_th,
+                        "classroom": student.classroom,
+                        "roll_number": student.roll_number
+                    })
+        return jsonify({"status": "error", "message": "ไม่พบข้อมูลนักเรียน"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
 
 @app.route('/save_attendance', methods=['POST'])
 def save_attendance():
@@ -476,7 +473,7 @@ def get_subjects():
         "id": s.id, 
         "name": s.name, 
         "teacher": s.teacher,
-        "level": s.target_level # ส่งระดับชั้นกลับไปให้หน้าเว็บ
+        "level": s.target_level 
     } for s in subjects])
 
 @app.route('/subjects', methods=['GET', 'POST'])
@@ -535,7 +532,6 @@ def settings():
 def attendance_management():
     """หน้าจัดการสถานะการเข้าเรียนและลงชื่อเด็กที่ขาด/ลา"""
     today = datetime.now().date()
-    # ดึงรายชื่อห้องทั้งหมดมาให้เลือก
     classes = db.session.query(Student.classroom).distinct().all()
     class_list = [c[0] for c in classes]
     
@@ -544,12 +540,18 @@ def attendance_management():
     missing_students = []
 
     if selected_class:
-        # 1. รายชื่อคนที่เช็กชื่อแล้ว
-        records = Attendance.query.filter_by(date=today).join(Student).filter(Student.classroom == selected_class).all()
+        # 1. รายชื่อคนที่เช็กชื่อแล้ว (กรองตามห้องเรียนผ่านการ Join)
+        records = Attendance.query.join(Student).filter(
+            Attendance.date == today, 
+            Student.classroom == selected_class
+        ).all()
         
-        # 2. ค้นหาคนที่ "ยังไม่ได้เช็กชื่อ" ในวันนี้
+        # 2. ค้นหาคนที่ยังไม่ได้เช็กชื่อ
         checked_ids = [r.student_id for r in records]
-        missing_students = Student.query.filter(Student.classroom == selected_class, Student.id.not_in(checked_ids)).all()
+        missing_students = Student.query.filter(
+            Student.classroom == selected_class, 
+            Student.id.not_in(checked_ids) if checked_ids else True
+        ).all()
 
     return render_template('attendance_data.html', 
                            class_list=class_list, 

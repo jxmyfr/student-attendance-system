@@ -50,28 +50,33 @@
 
 <div class="subject-container">
     <h3 style="margin-top:0;"><i class="fas fa-book"></i> รายวิชาในระบบ</h3>
-    <table>
-        <thead>
+    <table class="student-table"> <thead>
             <tr>
                 <th>รหัสวิชา</th>
                 <th>ชื่อรายวิชา</th>
+                <th>ระดับชั้น</th>
                 <th>ครูผู้สอน</th>
                 <th>จัดการ</th>
             </tr>
         </thead>
         <tbody>
-            {% for sub in subjects %}
+            {% for sub in subjects %} 
             <tr>
                 <td><strong>{{ sub.id }}</strong></td>
                 <td>{{ sub.name }}</td>
+                <td><span class="badge">{{ sub.target_level }}</span></td>
                 <td>{{ sub.teacher }}</td>
                 <td>
                     <a href="{{ url_for('delete_subject', subject_id=sub.id) }}" class="btn-delete" onclick="return confirm('ลบวิชานี้ใช่หรือไม่?');">ลบ</a>
                 </td>
             </tr>
             {% else %}
-            <tr><td colspan="4" style="text-align: center;">ยังไม่มีรายวิชาในระบบ</td></tr>
-            {% endfor %}
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 20px; color: #718096;">
+                    ยังไม่มีรายวิชาในระบบ
+                </td>
+            </tr>
+            {% endfor %} 
         </tbody>
     </table>
 </div>

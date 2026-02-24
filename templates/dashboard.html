@@ -2,6 +2,8 @@
 {% block title %}ภาพรวมสถิติการเข้าเรียน{% endblock %}
 
 {% block content %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
     .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
     
@@ -180,34 +182,55 @@
             displayData.sort((a, b) => a.roll - b.roll);
             
             displayData.forEach(s => {
-                let color = s.attendance_rate >= 80 ? '#48bb78' : (s.attendance_rate >= 50 ? '#ecc94b' : '#e53e3e');
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${s.roll}</td>
-                        <td><strong>${s.id}</strong></td>
-                        <td>${s.name}</td>
-                        <td>${s.present + s.late} / ${s.total_classes}</td>
-                        <td>
-                            <strong style="color: ${color};">${s.attendance_rate}%</strong>
-                            <div class="progress-bar"><div class="progress-fill" style="width: ${s.attendance_rate}%; background-color: ${color};"></div></div>
-                        </td>
-                    </tr>
-                `;
-            });
+    // กำหนดสีตามเปอร์เซ็นต์
+    let color = s.attendance_rate >= 80 ? '#48bb78' : (s.attendance_rate >= 50 ? '#ecc94b' : '#e53e3e');
+    
+    tbody.innerHTML += `
+        <tr>
+            <td style="color: #718096; font-weight: 600;">#${s.roll}</td>
+            <td><span style="font-weight: 700; color: #2d3748;">${s.id}</span></td>
+            <td>${s.name}</td>
+            <td>
+                <span style="background: #f7fafc; padding: 4px 10px; border-radius: 6px; font-size: 0.9rem; border: 1px solid #edf2f7;">
+                    ${s.present + s.late} / ${s.total_classes} คาบ
+                </span>
+            </td>
+            <td>
+                <div class="progress-container">
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar-fill" style="width: ${s.attendance_rate}%; background-color: ${color};"></div>
+                    </div>
+                    <strong style="color: ${color}; min-width: 45px; text-align: right;">${s.attendance_rate}%</strong>
+                </div>
+            </td>
+        </tr>
+    `;
+});
         }
     }
 
     // สร้างการ์ดปุ่มกดเพื่อเจาะลึก
     function createCard(title, students, iconClass) {
-        const stats = calculateGroupStats(students);
-        const card = document.createElement('div');
-        card.className = 'level-card';
-        card.innerHTML = `
-            <i class="${iconClass}"></i>
-            <h3>${title}</h3>
-            <p>นักเรียน ${stats.count} คน</p>
-            <div class="stat-badge">เข้าเรียนเฉลี่ย ${stats.avg}%</div>
-        `;
+    const stats = calculateGroupStats(students);
+    const card = document.createElement('div');
+    card.className = 'level-card';
+    card.style = `
+        background: white;
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-top: 4px solid var(--primary);
+    `;
+    
+    card.innerHTML = `
+        <div style="font-size: 2rem; color: var(--primary); margin-bottom: 12px;"><i class="${iconClass}"></i></div>
+        <h3 style="margin: 0; font-size: 1.25rem;">${title}</h3>
+        <p style="color: #64748b; margin: 8px 0;">นักเรียน ${stats.count} คน</p>
+        <div style="background: #eff6ff; color: #1d4ed8; padding: 4px 12px; border-radius: 20px; font-weight: bold; display: inline-block;">
+            เฉลี่ย ${stats.avg}%
+        </div>
+    `;
         card.onclick = () => {
             currentPath.push(title);
             renderView();

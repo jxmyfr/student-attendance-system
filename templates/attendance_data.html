@@ -1,61 +1,225 @@
 {% extends 'base.html' %}
+
+{% block title %}จัดการข้อมูลการเข้าเรียนรายวัน{% endblock %}
+
 {% block content %}
-<div class="container" style="background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
-    <h2 style="margin-bottom: 25px;"><i class="fas fa-clipboard-check"></i> จัดการข้อมูลการเข้าเรียนรายวัน</h2>
-    
-    <form method="GET" style="margin-bottom: 30px; display: flex; gap: 10px;">
-        <select name="class_name" class="form-select" style="max-width: 200px; padding: 10px; border-radius: 6px;">
-            <option value="">-- เลือกห้องเรียน --</option>
+<style>
+    .attendance-container {
+        background: white;
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: var(--card-shadow);
+    }
+
+    .filter-section {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #edf2f7;
+        align-items: center;
+    }
+
+    .form-select-custom {
+        padding: 10px 15px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e0;
+        font-family: 'Sarabun', sans-serif;
+        min-width: 250px;
+        outline: none;
+    }
+
+    .btn-fetch {
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        padding: 10px 25px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: 0.3s;
+    }
+
+    .btn-fetch:hover {
+        background-color: var(--primary-dark);
+    }
+
+    /* สไตล์สำหรับการแบ่งฝั่ง ขาด/ลา และ มาเรียน */
+    .management-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+    }
+
+    .status-card {
+        border-radius: 12px;
+        border: 1px solid #edf2f7;
+        overflow: hidden;
+    }
+
+    .status-card-header {
+        padding: 15px 20px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .bg-missing { background-color: #fff5f5; color: #c53030; border-bottom: 2px solid #feb2b2; }
+    .bg-present { background-color: #f0fff4; color: #2f855a; border-bottom: 2px solid #9ae6b4; }
+
+    .list-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .list-table tr {
+        border-bottom: 1px solid #edf2f7;
+    }
+
+    .list-table td {
+        padding: 12px 20px;
+        vertical-align: middle;
+    }
+
+    /* ปุ่มจัดการสถานะ */
+    .btn-status {
+        padding: 5px 12px;
+        border-radius: 6px;
+        border: none;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.2s;
+        margin-left: 5px;
+    }
+
+    .btn-sick { background: #fef9c3; color: #854d0e; }
+    .btn-personal { background: #ffedd5; color: #9a3412; }
+    .btn-absent { background: #fee2e2; color: #991b1b; }
+
+    .btn-status:hover { filter: brightness(0.9); }
+
+    .empty-state {
+        padding: 40px;
+        text-align: center;
+        color: #a0aec0;
+    }
+</style>
+
+<div class="attendance-container">
+    <div class="dash-header">
+        <h2 style="margin-bottom: 0;"><i class="fas fa-clipboard-check"></i> บันทึกสถานะการมาเรียน</h2>
+        <p style="color: #718096; margin-top: 5px;">จัดการรายชื่อนักเรียนที่ไม่ได้สแกนหน้าและตรวจสอบความถูกต้อง</p>
+    </div>
+
+    <form method="GET" class="filter-section">
+        <select name="class_name" class="form-select-custom" required>
+            <option value="">-- เลือกห้องเรียนเพื่อดึงข้อมูล --</option>
             {% for c in class_list %}
             <option value="{{ c }}" {% if c == selected_class %}selected{% endif %}>{{ c }}</option>
             {% endfor %}
         </select>
-        <button type="submit" class="btn-add" style="background: #3182ce; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">ดึงรายชื่อ</button>
+        <button type="submit" class="btn-fetch">
+            <i class="fas fa-search"></i> ดึงรายชื่อนักเรียน
+        </button>
     </form>
 
     {% if selected_class %}
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-        <div>
-            <h4 style="color: #e53e3e;"><i class="fas fa-user-times"></i> ยังไม่ได้เช็กชื่อ (ลงสถานะ ขาด/ลา)</h4>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+    <div class="management-grid">
+        <div class="status-card">
+            <div class="status-card-header bg-missing">
+                <i class="fas fa-user-times"></i> ยังไม่ได้เช็กชื่อ (ลงสถานะ ขาด/ลา)
+            </div>
+            <table class="list-table">
                 {% for s in missing_students %}
-                <tr style="border-bottom: 1px solid #edf2f7;">
-                    <td style="padding: 10px;">{{ s.roll_number }}. {{ s.name_th }}</td>
-                    <td style="text-align: right; padding: 10px;">
-                        <button onclick="saveStatus('{{ s.id }}', 'Sick Leave')" style="background: #ecc94b; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">ลาป่วย</button>
-                        <button onclick="saveStatus('{{ s.id }}', 'Personal Leave')" style="background: #ed8936; border: none; padding: 5px 10px; border-radius: 4px; color: white; cursor: pointer; font-size: 12px;">ลากิจ</button>
-                        <button onclick="saveStatus('{{ s.id }}', 'Absent')" style="background: #e53e3e; border: none; padding: 5px 10px; border-radius: 4px; color: white; cursor: pointer; font-size: 12px;">ขาด</button>
+                <tr>
+                    <td>
+                        <div style="font-weight: 600;">{{ s.roll_number }}. {{ s.name_th }}</div>
+                        <div style="font-size: 0.8rem; color: #a0aec0;">ID: {{ s.id }}</div>
                     </td>
+                    <td style="text-align: right;">
+                        <button class="btn-status btn-sick" onclick="saveStatus('{{ s.id }}', 'Sick Leave')">ลาป่วย</button>
+                        <button class="btn-status btn-personal" onclick="saveStatus('{{ s.id }}', 'Personal Leave')">ลากิจ</button>
+                        <button class="btn-status btn-absent" onclick="saveStatus('{{ s.id }}', 'Absent')">ขาดเรียน</button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td class="empty-state">เช็กชื่อครบทุกคนในห้องนี้แล้ว</td>
                 </tr>
                 {% endfor %}
             </table>
         </div>
 
-        <div>
-            <h4 style="color: #48bb78;"><i class="fas fa-user-check"></i> เช็กชื่อแล้ว</h4>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+        <div class="status-card">
+            <div class="status-card-header bg-present">
+                <i class="fas fa-user-check"></i> เช็กชื่อเรียบร้อยแล้ว
+            </div>
+            <table class="list-table">
                 {% for r in records %}
-                <tr style="border-bottom: 1px solid #edf2f7;">
-                    <td style="padding: 10px;">{{ r.student.name_th }}</td>
-                    <td style="padding: 10px; color: #718096;">{{ r.time.strftime('%H:%M') }}</td>
-                    <td style="text-align: right; padding: 10px;">
-                        <span style="background: #f0fff4; color: #2f855a; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">{{ r.status }}</span>
+                <tr>
+                    <td>
+                        <div style="font-weight: 600;">{{ r.student.name_th }}</div>
+                        <div style="font-size: 0.8rem; color: #a0aec0;">{{ r.subject or 'ไม่ระบุวิชา' }}</div>
                     </td>
+                    <td style="text-align: center; color: #718096; font-size: 0.9rem;">
+                        <i class="far fa-clock"></i> {{ r.time.strftime('%H:%M') }}
+                    </td>
+                    <td style="text-align: right;">
+                        {% if r.status == 'Present' %}
+                            <span class="badge" style="background: #dcfce7; color: #15803d;">มาเรียน</span>
+                        {% elif r.status == 'Late' %}
+                            <span class="badge" style="background: #fef9c3; color: #854d0e;">มาสาย</span>
+                        {% elif r.status == 'Sick Leave' %}
+                            <span class="badge" style="background: #fef9c3; color: #854d0e;">ลาป่วย</span>
+                        {% elif r.status == 'Personal Leave' %}
+                            <span class="badge" style="background: #ffedd5; color: #9a3412;">ลากิจ</span>
+                        {% else %}
+                            <span class="badge" style="background: #fee2e2; color: #991b1b;">ขาดเรียน</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td class="empty-state">ยังไม่มีข้อมูลการเข้าเรียนในวันนี้</td>
                 </tr>
                 {% endfor %}
             </table>
         </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-arrow-up" style="font-size: 3rem; margin-bottom: 20px;"></i>
+        <h3>กรุณาเลือกห้องเรียนที่ต้องการจัดการ</h3>
     </div>
     {% endif %}
 </div>
 
 <script>
 function saveStatus(id, status) {
+    // แสดง loading เบื้องต้น
+    document.body.style.cursor = 'wait';
+    
     fetch('/add_missing_status', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({student_id: id, status: status})
-    }).then(() => location.reload());
+    })
+    .then(response => response.json())
+    .then(data => {
+        if(data.status === 'success') {
+            location.reload(); // รีโหลดหน้าเพื่ออัปเดตสถานะในตาราง
+        } else {
+            alert('เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+            document.body.style.cursor = 'default';
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้');
+        document.body.style.cursor = 'default';
+    });
 }
 </script>
 {% endblock %}

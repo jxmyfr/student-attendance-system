@@ -2,13 +2,13 @@
 Kiosk){% endblock %} {% block content %}
 <style>
   .kiosk-container {
-    max-width: 600px;
+    width: 100%;
+    max-width: 800px;
     margin: 0 auto;
     background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-    padding: 30px;
-    text-align: center;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    padding: clamp(15px, 5vw, 30px);
   }
   .step-section {
     display: none;
@@ -25,6 +25,20 @@ Kiosk){% endblock %} {% block content %}
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  /* จัดระเบียบ Dropdown รหัสวิชา และ ชื่อวิชา ไม่ให้เบียดกัน */
+  .subject-select-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr; /* รหัสวิชา 1 ส่วน : ชื่อวิชา 2 ส่วน */
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  @media (max-width: 576px) {
+    .subject-select-grid {
+      grid-template-columns: 1fr; /* บนมือถือให้เรียงแถวละ 1 อัน */
     }
   }
 
@@ -115,6 +129,52 @@ Kiosk){% endblock %} {% block content %}
     margin: 5px 0;
     font-size: 1.1rem;
   }
+
+  /* ส่วนของกล้องวิดีโอ */
+  .video-wrapper {
+    position: relative;
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 4px solid #2d3748;
+    background: #000;
+    margin-bottom: 20px;
+  }
+
+  #videoElement {
+    width: 100%;
+    display: block;
+    transform: scaleX(-1); /* กลับด้านกล้องเป็นกระจกเงา */
+  }
+
+  /* กรอบเลนส์กล้องแบบทันสมัย */
+.camera-viewfinder {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 240px;
+    height: 320px;
+    border: 3px solid rgba(255, 255, 255, 0.7);
+    border-radius: 40px;
+    box-shadow: 0 0 0 1000px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* เส้นสแกนวิ่งขึ้นลง (Scanning Animation) */
+.scan-line {
+    position: absolute;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(to right, transparent, #48bb78, transparent);
+    box-shadow: 0 0 15px #48bb78;
+    animation: moveLine 2.5s infinite linear;
+}
+
+@keyframes moveLine {
+    0% { top: 0%; }
+    100% { top: 100%; }
+}
 </style>
 
 <div class="kiosk-container">
@@ -131,34 +191,52 @@ Kiosk){% endblock %} {% block content %}
     </div>
 
     <div class="form-group">
-        <label>2. ค้นหารายวิชา (เลือกอย่างใดอย่างหนึ่ง)</label>
-    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-        <select id="subjectIdSelect" onchange="syncSubject('id')" style="flex: 1;">
-            <option value="">-- เลือกรหัสวิชา --</option>
+      <label>2. ค้นหารายวิชา (เลือกอย่างใดอย่างหนึ่ง)</label>
+      <div style="display: flex; gap: 10px; margin-bottom: 10px">
+        <select
+          id="subjectIdSelect"
+          onchange="syncSubject('id')"
+          style="flex: 1"
+        >
+          <option value="">-- เลือกรหัสวิชา --</option>
         </select>
-        <select id="subjectNameSelect" onchange="syncSubject('name')" style="flex: 2;">
-            <option value="">-- เลือกชื่อรายวิชา --</option>
+        <select
+          id="subjectNameSelect"
+          onchange="syncSubject('name')"
+          style="flex: 2"
+        >
+          <option value="">-- เลือกชื่อรายวิชา --</option>
         </select>
-    </div>
-    <div id="teacherDisplay" style="padding: 10px; background: #edf2f7; border-radius: 6px; font-size: 0.9rem; color: #4a5568; border-left: 4px solid #3182ce;">
+      </div>
+      <div
+        id="teacherDisplay"
+        style="
+          padding: 10px;
+          background: #edf2f7;
+          border-radius: 6px;
+          font-size: 0.9rem;
+          color: #4a5568;
+          border-left: 4px solid #3182ce;
+        "
+      >
         <i class="fas fa-user-tie"></i> ผู้สอน: <span id="teacherName">-</span>
+      </div>
     </div>
-</div>
 
     <div class="form-group">
-            <label>3. เลือกคาบเรียน (อิงตามตารางสอน)</label>
-            <select id="startTimeInput" required>
-                <option value="">-- เลือกคาบเรียน --</option>
-                <option value="08:30">คาบ 1 (08:30 - 09:20)</option>
-                <option value="09:20">คาบ 2 (09:20 - 10:10)</option>
-                <option value="10:20">คาบ 3 (10:20 - 11:10)</option>
-                <option value="11:10">คาบ 4 (11:10 - 12:00)</option>
-                <option value="13:00">คาบ 6 (13:00 - 13:50)</option>
-                <option value="13:50">คาบ 7 (13:50 - 14:40)</option>
-                <option value="14:40">คาบ 8 (14:40 - 15:30)</option>
-                <option value="15:30">คาบ 9 (15:30 - 16:20)</option>
-            </select>
-        </div>
+      <label>3. เลือกคาบเรียน (อิงตามตารางสอน)</label>
+      <select id="startTimeInput" required>
+        <option value="">-- เลือกคาบเรียน --</option>
+        <option value="08:30">คาบ 1 (08:30 - 09:20)</option>
+        <option value="09:20">คาบ 2 (09:20 - 10:10)</option>
+        <option value="10:20">คาบ 3 (10:20 - 11:10)</option>
+        <option value="11:10">คาบ 4 (11:10 - 12:00)</option>
+        <option value="13:00">คาบ 6 (13:00 - 13:50)</option>
+        <option value="13:50">คาบ 7 (13:50 - 14:40)</option>
+        <option value="14:40">คาบ 8 (14:40 - 15:30)</option>
+        <option value="15:30">คาบ 9 (15:30 - 16:20)</option>
+      </select>
+    </div>
 
     <button class="btn btn-primary" onclick="goToStep2()">
       <i class="fas fa-camera"></i> เริ่มเปิดกล้องเช็กชื่อ
@@ -213,7 +291,8 @@ Kiosk){% endblock %} {% block content %}
 </div>
 
 <script>
-  // ตัวแปรเก็บข้อมูล
+  // --- 1. ตัวแปร Global (ต้องอยู่นอกสุด) ---
+  let allSubjects = [];
   let selectedClass = "";
   let selectedSubject = "";
   let currentStudentId = "";
@@ -223,118 +302,123 @@ Kiosk){% endblock %} {% block content %}
   const ctx = canvas.getContext("2d");
   let stream = null;
 
-  // โหลดรายชื่อห้องและวิชาตอนเปิดหน้าเว็บ
+  // --- 2. ฟังก์ชันหลัก (อยู่นอก onload เพื่อให้ HTML เรียกใช้งานได้) ---
+  
+  function filterSubjectsByClass() {
+    const classVal = document.getElementById("classSelect").value;
+    if (!classVal) return;
+
+    // ม.1/1 -> ม.1
+    const gradeLevel = classVal.split("/")[0].trim(); 
+    const idSelect = document.getElementById("subjectIdSelect");
+    const nameSelect = document.getElementById("subjectNameSelect");
+
+    idSelect.innerHTML = '<option value="">-- เลือกรหัสวิชา --</option>';
+    nameSelect.innerHTML = '<option value="">-- เลือกชื่อรายวิชา --</option>';
+
+    const filtered = allSubjects.filter((s) => s.level === gradeLevel);
+
+    filtered.forEach((s) => {
+      idSelect.innerHTML += `<option value="${s.id}">${s.id}</option>`;
+      nameSelect.innerHTML += `<option value="${s.name}">${s.name}</option>`;
+    });
+  }
+
+  function syncSubject(type) {
+    const idSelect = document.getElementById("subjectIdSelect");
+    const nameSelect = document.getElementById("subjectNameSelect");
+    const teacherName = document.getElementById("teacherName");
+
+    let selectedSub;
+    if (type === "id") {
+      selectedSub = allSubjects.find((s) => s.id === idSelect.value);
+      if (selectedSub) nameSelect.value = selectedSub.name;
+    } else {
+      selectedSub = allSubjects.find((s) => s.name === nameSelect.value);
+      if (selectedSub) idSelect.value = selectedSub.id;
+    }
+
+    if (selectedSub) {
+      teacherName.innerText = selectedSub.teacher || "ไม่ระบุชื่อผู้สอน";
+      selectedSubject = selectedSub.name; // เก็บค่าไว้ใช้ตอนบันทึก
+    } else {
+      teacherName.innerText = "-";
+      selectedSubject = "";
+    }
+  }
+
+  // --- 3. เมื่อโหลดหน้าเว็บ ---
   window.onload = function () {
-    let allSubjects = []; // ตัวแปรเก็บข้อมูลวิชาทั้งหมด
-    // --- โค้ดใหม่: คำนวณเวลาและเลือกคาบเรียนให้อัตโนมัติ ---
+    // ตั้งค่าเวลาคาบเรียน
     const now = new Date();
-    const currentHour = now.getHours();
-    const currentMin = now.getMinutes();
-    const timeVal = currentHour * 60 + currentMin; // แปลงเป็นนาที
+    const timeVal = now.getHours() * 60 + now.getMinutes();
+    const startTimeInput = document.getElementById("startTimeInput");
 
-    const startTimeInput = document.getElementById('startTimeInput');
+    if (timeVal >= 510 && timeVal < 560) startTimeInput.value = "08:30";
+    else if (timeVal >= 560 && timeVal < 620) startTimeInput.value = "09:20";
+    else if (timeVal >= 620 && timeVal < 670) startTimeInput.value = "10:20";
+    else if (timeVal >= 670 && timeVal < 780) startTimeInput.value = "11:10";
+    else if (timeVal >= 780 && timeVal < 830) startTimeInput.value = "13:00";
+    else if (timeVal >= 830 && timeVal < 880) startTimeInput.value = "13:50";
+    else if (timeVal >= 880 && timeVal < 930) startTimeInput.value = "14:40";
+    else if (timeVal >= 930) startTimeInput.value = "15:30";
 
-    // โหลดรายวิชาจาก API
-    fetch("/api/subjects")
-        .then((response) => response.json())
-        .then((subjects) => {
-            allSubjects = subjects; // เก็บข้อมูลไว้ใช้งาน
-            const idSelect = document.getElementById("subjectIdSelect");
-            const nameSelect = document.getElementById("subjectNameSelect");
-
-            subjects.forEach((s) => {
-                idSelect.innerHTML += `<option value="${s.id}">${s.id}</option>`;
-                nameSelect.innerHTML += `<option value="${s.name}">${s.name}</option>`;
-            });
-        });
-    
-    // เทียบเวลาเพื่อเลือกคาบ (อิงตามตารางสอน)
-    if (timeVal >= 510 && timeVal < 560) { startTimeInput.value = "08:30"; }       // 08:30 - 09:20 (คาบ 1)
-    else if (timeVal >= 560 && timeVal < 620) { startTimeInput.value = "09:20"; }  // 09:20 - 10:20 (คาบ 2)
-    else if (timeVal >= 620 && timeVal < 670) { startTimeInput.value = "10:20"; }  // 10:20 - 11:10 (คาบ 3)
-    else if (timeVal >= 670 && timeVal < 780) { startTimeInput.value = "11:10"; }  // 11:10 - 13:00 (คาบ 4 + พักเที่ยง)
-    else if (timeVal >= 780 && timeVal < 830) { startTimeInput.value = "13:00"; }  // 13:00 - 13:50 (คาบ 6)
-    else if (timeVal >= 830 && timeVal < 880) { startTimeInput.value = "13:50"; }  // 13:50 - 14:40 (คาบ 7)
-    else if (timeVal >= 880 && timeVal < 930) { startTimeInput.value = "14:40"; }  // 14:40 - 15:30 (คาบ 8)
-    else if (timeVal >= 930) { startTimeInput.value = "15:30"; }                   // 15:30 ขึ้นไป (คาบ 9)
-
-    // --- โหลดห้องเรียน (เหมือนเดิม) ---
+    // โหลดชั้นเรียน
     fetch("/api/classes")
-      .then((response) => response.json())
+      .then((res) => res.json())
       .then((classes) => {
         const classSelect = document.getElementById("classSelect");
         classSelect.innerHTML = '<option value="">-- เลือกชั้นเรียน --</option>';
         classes.forEach((c) => {
           classSelect.innerHTML += `<option value="${c}">${c}</option>`;
         });
+        // ผูก event หลังจากโหลดข้อมูลเสร็จ
+        classSelect.onchange = filterSubjectsByClass;
       });
 
-    // --- โหลดรายวิชา (เหมือนเดิม) ---
+    // โหลดวิชามาเก็บในตัวแปร Global
     fetch("/api/subjects")
-      .then((response) => response.json())
+      .then((res) => res.json())
       .then((subjects) => {
-        const subSelect = document.getElementById("subjectSelect");
-        subSelect.innerHTML = '<option value="">-- เลือกรายวิชา --</option>';
-        subjects.forEach((s) => {
-          subSelect.innerHTML += `<option value="${s.name}">${s.id} - ${s.name}</option>`;
-        });
+        allSubjects = subjects;
       });
-};
+  };
 
+  // --- ฟังก์ชันอื่นๆ (goToStep, processFace) ---
   function showStep(stepNumber) {
-    document
-      .querySelectorAll(".step-section")
-      .forEach((el) => el.classList.remove("active"));
+    document.querySelectorAll(".step-section").forEach((el) => el.classList.remove("active"));
     document.getElementById("step" + stepNumber).classList.add("active");
   }
 
   function goToStep1() {
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-    } // ปิดกล้อง
+    if (stream) stream.getTracks().forEach((track) => track.stop());
     showStep(1);
   }
 
   function goToStep2() {
     selectedClass = document.getElementById("classSelect").value;
-    selectedSubject = document.getElementById("subjectSelect").value;
-
     if (!selectedClass || !selectedSubject) {
-      alert("กรุณาเลือกห้องและกรอกชื่อวิชาก่อนครับ!");
+      alert("กรุณาเลือกชั้นเรียนและรายวิชาก่อนครับ!");
       return;
     }
-
-    document.getElementById("currentClassDisplay").innerText =
-      `วิชา: ${selectedSubject} (${selectedClass})`;
+    document.getElementById("currentClassDisplay").innerText = `วิชา: ${selectedSubject} (${selectedClass})`;
     showStep(2);
-
-    // เปิดกล้อง
-    navigator.mediaDevices
-      .getUserMedia({ video: true })
-      .then((s) => {
-        stream = s;
-        video.srcObject = stream;
-      })
-      .catch((err) => {
-        alert("ไม่สามารถเข้าถึงกล้องได้");
-      });
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then((s) => { stream = s; video.srcObject = stream; })
+      .catch(() => alert("ไม่สามารถเข้าถึงกล้องได้"));
   }
 
   function processFace() {
     const btn = document.getElementById("captureBtn");
-    btn.innerHTML =
-      '<i class="fas fa-spinner fa-spin"></i> กำลังประมวลผล AI...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังประมวลผล AI...';
     btn.disabled = true;
 
-    // ถ่ายรูป
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imgBase64 = canvas.toDataURL("image/jpeg", 0.9);
-
     document.getElementById("snapshotImage").src = imgBase64;
 
-    // ส่งภาพให้ AI ทาย
     fetch("/recognize_face", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -342,117 +426,41 @@ Kiosk){% endblock %} {% block content %}
     })
       .then((res) => res.json())
       .then((data) => {
-        btn.innerHTML =
-          '<i class="fas fa-camera"></i> กดเพื่อถ่ายรูป (สแกนหน้า)';
+        btn.innerHTML = '<i class="fas fa-camera"></i> กดเพื่อถ่ายรูป (สแกนหน้า)';
         btn.disabled = false;
-
         if (data.status === "success") {
-          // ถ้าสแกนเจอเด็ก แต่คนละห้องกับที่ตั้งค่าไว้
           if (data.classroom !== selectedClass) {
-            alert(
-              `⚠️ แจ้งเตือน: ${data.name_th} อยู่ห้อง ${data.classroom} ไม่ใช่ห้อง ${selectedClass} ที่กำลังเรียนอยู่ตอนนี้!`,
-            );
-            return; // ยกเลิกการไปหน้ายืนยัน
+            alert(`⚠️ แจ้งเตือน: ${data.name_th} อยู่ห้อง ${data.classroom} ไม่ใช่ห้อง ${selectedClass}!`);
+            return;
           }
-
-          // แสดงผลข้อมูล
           currentStudentId = data.student_id;
           document.getElementById("resultName").innerText = data.name_th;
           document.getElementById("resultId").innerText = data.student_id;
           document.getElementById("resultClass").innerText = data.classroom;
           document.getElementById("resultRoll").innerText = data.roll_number;
-
-          showStep(3); // ไปหน้ายืนยัน
+          showStep(3);
         } else {
           alert("❌ " + data.message);
         }
-      })
-      .catch((err) => {
-        btn.innerHTML =
-          '<i class="fas fa-camera"></i> กดเพื่อถ่ายรูป (สแกนหน้า)';
-        btn.disabled = false;
-        alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
       });
   }
 
-  const startTime = document.getElementById('startTimeInput').value; // ดึงเวลามา
-
   function confirmAttendance() {
+    const startTimeInput = document.getElementById("startTimeInput").value;
     fetch("/save_attendance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        student_id: currentStudentId, 
+        student_id: currentStudentId,
         subject: selectedSubject,
-        start_time: startTime // ส่งเวลาเริ่มคาบไปด้วย
+        start_time: startTimeInput,
       }),
     })
       .then((res) => res.json())
       .then((data) => {
-        if (data.status === "success") {
-          alert("✅ " + data.message);
-          goToStep2(); // กลับไปหน้ากล้องเพื่อเช็กชื่อคนต่อไป
-        } else if (data.status === "warning") {
-          alert("⚠️ " + data.message);
-          goToStep2();
-        }
+        alert(data.status === "success" ? "✅ " + data.message : "⚠️ " + data.message);
+        goToStep2();
       });
   }
-
-  function syncSubject(type) {
-    const idSelect = document.getElementById("subjectIdSelect");
-    const nameSelect = document.getElementById("subjectNameSelect");
-    const teacherName = document.getElementById("teacherName");
-    
-    let selectedSub;
-    if (type === 'id') {
-        selectedSub = allSubjects.find(s => s.id === idSelect.value);
-        if (selectedSub) nameSelect.value = selectedSub.name;
-    } else {
-        selectedSub = allSubjects.find(s => s.name === nameSelect.value);
-        if (selectedSub) idSelect.value = selectedSub.id;
-    }
-
-    if (selectedSub) {
-        teacherName.innerText = selectedSub.teacher || "ไม่ระบุชื่อผู้สอน";
-        // เก็บค่าไว้ใช้ตอนบันทึก (เราจะใช้ชื่อวิชาเป็นหลัก)
-        window.selectedSubjectFinal = selectedSub.name; 
-    } else {
-        teacherName.innerText = "-";
-        window.selectedSubjectFinal = "";
-    }
-}
-
-    function filterSubjectsByClass() {
-    const selectedClass = document.getElementById("classSelect").value; // เช่น "ม.1/1"
-    if (!selectedClass) return;
-
-    // ดึงระดับชั้นออกมา (ม.1/1 -> ม.1)
-    const gradeLevel = selectedClass.split('/')[0].trim(); 
-
-    const idSelect = document.getElementById("subjectIdSelect");
-    const nameSelect = document.getElementById("subjectNameSelect");
-
-    // ล้างข้อมูลเดิมใน Dropdown
-    idSelect.innerHTML = '<option value="">-- เลือกรหัสวิชา --</option>';
-    nameSelect.innerHTML = '<option value="">-- เลือกชื่อรายวิชา --</option>';
-
-    // กรองเฉพาะวิชาที่ตรงกับระดับชั้น
-    const filtered = allSubjects.filter(s => s.level === gradeLevel);
-
-    filtered.forEach((s) => {
-        idSelect.innerHTML += `<option value="${s.id}">${s.id}</option>`;
-        nameSelect.innerHTML += `<option value="${s.name}">${s.name}</option>`;
-    });
-    
-    // รีเซ็ตชื่อผู้สอนเป็นค่าว่างก่อน
-    document.getElementById("teacherName").innerText = "-";
-}
-
-// นำไปผูกกับเหตุการณ์เปลี่ยนห้องเรียน
-document.getElementById("classSelect").onchange = function() {
-    filterSubjectsByClass();
-};
-
 </script>
 {% endblock %}

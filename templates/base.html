@@ -1,120 +1,290 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="th">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FaceAttend - ระบบจัดการการเข้าเรียน</title>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { 
-            font-family: 'Sarabun', sans-serif; 
-            display: flex; 
-            background-color: #f4f7fc; /* สีพื้นหลังเนื้อหาหลัก */
-            height: 100vh;
-            overflow: hidden;
-        }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Sarabun", sans-serif;
+        display: flex;
+        background-color: #f4f7fc; /* สีพื้นหลังเนื้อหาหลัก */
+        height: 100vh;
+        overflow: hidden;
+      }
 
-        /* --- สไตล์ Sidebar สีเข้ม --- */
-        .sidebar {
-            width: 260px;
-            background-color: #171923; /* สีพื้นหลัง Sidebar เข้มๆ */
-            color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            padding-top: 20px;
-            box-shadow: 4px 0 10px rgba(0,0,0,0.1);
-            z-index: 100;
-        }
+      /* --- อัปเกรดสไตล์ Sidebar และ Global --- */
+      :root {
+        --primary: #3182ce;
+        --primary-dark: #2b6cb0;
+        --success: #48bb78;
+        --warning: #ecc94b;
+        --danger: #e53e3e;
+        --bg-body: #f8fafc;
+        --sidebar-width: 260px;
+        --sidebar-collapsed-width: 80px;
+        --sidebar-bg: #1a202c;
+        --card-shadow:
+          0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      }
 
-        .sidebar-brand {
-            font-size: 24px;
-            font-weight: 700;
-            padding: 0 25px 20px;
-            border-bottom: 1px solid #2d3748;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-        }
+      .top-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        width: 100%;
+        flex-wrap: wrap; /* ให้แอดมินระบบตกลงมาได้ถ้าจอกว้างไม่พอ */
+        gap: 15px;
+      }
 
-        .sidebar-brand i { margin-right: 10px; color: #48bb78; } /* ไอคอนแบรนด์สีเขียว */
+      .user-profile {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 600;
+        color: #4a5568;
+        background: white;
+        padding: 5px 15px;
+        border-radius: 30px;
+        box-shadow: var(--card-shadow);
+      }
 
-        .nav-menu { display: flex; flex-direction: column; gap: 5px; padding: 0 15px; }
+      .user-profile img {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid var(--primary);
+      }
 
-        .nav-item {
-            padding: 12px 20px;
-            color: #a0aec0; /* สีเทาอ่อน */
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            font-weight: 500;
-        }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-        .nav-item i { margin-right: 15px; width: 20px; text-align: center; font-size: 1.1rem; }
+      body {
+        font-family: "Sarabun", sans-serif;
+        display: flex;
+        background-color: var(--bg-body);
+        height: 100vh;
+        overflow: hidden;
+        color: #2d3748;
+      }
 
-        .nav-item:hover { background-color: #2d3748; color: #ffffff; }
-        .nav-item.active { background-color: #2b6cb0; color: #ffffff; box-shadow: 0 4px 6px rgba(43, 108, 176, 0.3); }
+      .sidebar {
+        width: 260px;
+        min-width: 260px;
+        background-color: var(--sidebar-bg);
+        color: #ffffff;
+        display: flex;
+        flex-direction: column;
+        padding-top: 20px;
+        transition: all 0.3s ease;
+        z-index: 100;
+      }
 
-        /* --- สไตล์เนื้อหาหลัก --- */
-        .main-content {
-            flex: 1;
-            padding: 30px;
-            overflow-y: auto;
-        }
+      .sidebar-brand {
+        font-size: 24px;
+        font-weight: 700;
+        padding: 0 25px 25px;
+        border-bottom: 1px solid #2d3748;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        color: white;
+      }
 
-        .top-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-        }
-        
-        .top-header h2 { color: #2d3748; font-weight: 700; }
-        
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-weight: 500;
-            color: #4a5568;
-        }
-        .user-profile img { width: 40px; height: 40px; border-radius: 50%; background-color: #cbd5e0; }
+      .sidebar-brand i {
+        margin-right: 12px;
+        color: var(--success);
+      }
 
+      .nav-menu {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 0 15px;
+      }
+
+      .nav-item {
+        padding: 12px 18px;
+        color: #a0aec0;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+        font-weight: 500;
+      }
+
+      .nav-item i {
+        margin-right: 12px;
+        font-size: 1.1rem;
+      }
+
+      .nav-item:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+        color: #ffffff;
+      }
+
+      .nav-item.active {
+        background-color: var(--primary);
+        color: #ffffff;
+        box-shadow: 0 4px 12px rgba(49, 130, 206, 0.4);
+      }
+
+      /* --- อัปเกรดสไตล์ตารางและเนื้อหา --- */
+      .main-content {
+        flex-grow: 1;
+        overflow-y: auto; /* ให้เลื่อนแนวตั้งเฉพาะส่วนนี้ */
+        padding: clamp(15px, 3vw, 35px);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .student-table {
+        width: 100%;
+        background: white;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+        border-collapse: collapse;
+      }
+
+      .student-table th {
+        background-color: #f7fafc;
+        padding: 18px;
+        text-align: left;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #718096;
+      }
+
+      .student-table td {
+        padding: 16px 18px;
+        border-bottom: 1px solid #edf2f7;
+        vertical-align: middle;
+      }
+
+      /* Progress Bar แบบ Slim */
+      .progress-container {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .progress-bar-bg {
+        flex: 1;
+        height: 8px;
+        background-color: #edf2f7;
+        border-radius: 10px;
+        overflow: hidden;
+      }
+
+      .progress-bar-fill {
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.5s ease;
+      }
+
+      .btn-delete {
+        background-color: #feb2b2;
+        color: #9b2c2c;
+        padding: 6px 12px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: bold;
+        transition: 0.2s;
+      }
+
+      .btn-delete:hover {
+        background-color: #f56565;
+        color: white;
+      }
+
+      .badge {
+        background-color: #ebf8ff;
+        color: #2b6cb0;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: bold;
+      }
     </style>
-</head>
-<body>
-
+  </head>
+  <body>
     <div class="sidebar">
-        <div class="sidebar-brand">
-            <i class="fas fa-camera-retro"></i> FaceAttend
-        </div>
-        <div class="nav-menu">
-            <a href="/" class="nav-item {% if request.path == '/' or request.path == '/dashboard' %}active{% endif %}"><i class="fas fa-th-large"></i> แดชบอร์ด</a>
-            <a href="/scan" class="nav-item {% if request.path == '/scan' %}active{% endif %}"><i class="fas fa-camera"></i> สแกนใบหน้าเข้าเรียน</a>
-            
-            <a href="/attendance_management" class="nav-item {% if request.path == '/attendance_management' %}active{% endif %}"><i class="far fa-clock"></i> ข้อมูลการเข้าเรียน</a>
-            <a href="/students" class="nav-item {% if request.path == '/students' %}active{% endif %}"><i class="fas fa-user-graduate"></i> จัดการข้อมูลนักเรียน</a>
-            <a href="/subjects" class="nav-item {% if request.path == '/subjects' %}active{% endif %}"><i class="fas fa-book"></i> จัดการข้อมูลวิชา</a>
-            <a href="/reports" class="nav-item {% if request.path == '/reports' %}active{% endif %}"><i class="fas fa-file-alt"></i> รายงาน</a>
-            
-            <a href="/settings" class="nav-item {% if request.path == '/settings' %}active{% endif %}"><i class="fas fa-cog"></i> ตั้งค่า</a>
-        </div>
+      <div class="sidebar-brand">
+        <i class="fas fa-camera-retro"></i> FaceAttend
+      </div>
+      <div class="nav-menu">
+        <a
+          href="/"
+          class="nav-item {% if request.path == '/' or request.path == '/dashboard' %}active{% endif %}"
+          ><i class="fas fa-th-large"></i> แดชบอร์ด</a
+        >
+        <a
+          href="/scan"
+          class="nav-item {% if request.path == '/scan' %}active{% endif %}"
+          ><i class="fas fa-camera"></i> สแกนใบหน้าเข้าเรียน</a
+        >
+
+        <a
+          href="/attendance_management"
+          class="nav-item {% if request.path == '/attendance_management' %}active{% endif %}"
+          ><i class="far fa-clock"></i> ข้อมูลการเข้าเรียน</a
+        >
+        <a
+          href="/students"
+          class="nav-item {% if request.path == '/students' %}active{% endif %}"
+          ><i class="fas fa-user-graduate"></i> จัดการข้อมูลนักเรียน</a
+        >
+        <a
+          href="/subjects"
+          class="nav-item {% if request.path == '/subjects' %}active{% endif %}"
+          ><i class="fas fa-book"></i> จัดการข้อมูลวิชา</a
+        >
+        <a
+          href="/reports"
+          class="nav-item {% if request.path == '/reports' %}active{% endif %}"
+          ><i class="fas fa-file-alt"></i> รายงาน</a
+        >
+
+        <a
+          href="/settings"
+          class="nav-item {% if request.path == '/settings' %}active{% endif %}"
+          ><i class="fas fa-cog"></i> ตั้งค่า</a
+        >
+      </div>
     </div>
 
     <div class="main-content">
-        <div class="top-header">
-            <h2>{% block title %}ภาพรวมระบบ{% endblock %}</h2>
-            <div class="user-profile">
-                <span>แอดมินระบบ</span>
-                <i class="fas fa-user-circle" style="font-size: 30px;"></i>
-            </div>
+      <div class="top-header">
+        <h2>{% block title %}ภาพรวมระบบ{% endblock %}</h2>
+        <div class="user-profile">
+          <span>แอดมินระบบ</span>
+          <i class="fas fa-user-circle" style="font-size: 30px"></i>
         </div>
+      </div>
 
-        {% block content %}{% endblock %}
+      {% block content %}{% endblock %}
     </div>
-
-</body>
+  </body>
 </html>
