@@ -1,4 +1,4 @@
-from flask import Flask, render_template, Response, redirect, url_for, request, jsonify
+from flask import Flask, render_template, Response, redirect, url_for, request, jsonify, session, flash
 import base64
 import shutil
 from flask_sqlalchemy import SQLAlchemy
@@ -12,9 +12,12 @@ import io
 import csv
 from flask import make_response
 from datetime import datetime, date, timedelta
+from functools import wraps
 from PIL import ImageFont, ImageDraw, Image
 
 app = Flask(__name__)
+
+app.secret_key = "RA-WANG-FRAME-SECRET-KEY-2026"
 
 # --- CONFIGURATION (ตั้งค่าฐานข้อมูล) ---
 # ใช้ SQLite เพราะเป็นไฟล์เดียวจบ ไม่ต้องลงโปรแกรมเพิ่ม
@@ -64,6 +67,13 @@ known_face_encodings = []
 known_face_ids = []
 
 # --- HELPER FUNCTIONS ---
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 def load_encodings():
     """โหลดข้อมูล Encodings จากไฟล์ Pickle"""
@@ -137,9 +147,31 @@ def mark_attendance_db(student_id):
 
 load_encodings()
 
+
+ADMIN_USERNAME = "kru"
+ADMIN_PASSWORD = "12345678"
+
+
 # --- ROUTES ---
 
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        if request.form['username'] == ADMIN_USERNAME and request.form['password'] == ADMIN_PASSWORD:
+            session['logged_in'] = True
+            return redirect(url_for('dashboard'))
+        else:
+            flash('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง')
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
+
 @app.route('/scan')
+@login_required
 def index():
     """หน้าจอระบบสแกนใบหน้า (เปลี่ยนมาใช้ /scan แทน)"""
     return render_template('index.html')
@@ -147,46 +179,52 @@ def index():
 import json
 @app.route('/')
 @app.route('/dashboard')
+@login_required
 def dashboard():
-    """หน้า Dashboard สรุปผลสถิติแบบ Drill-down"""
     students = Student.query.all()
     attendances = Attendance.query.all()
-
-    # 1. นับสถิติการเข้าเรียนของนักเรียนแต่ละคน
+    
+    # --- ส่วนเดิมของคุณ: คำนวณรายคน ---
     student_stats = {}
     for s in students:
         student_stats[s.id] = {
-            'id': s.id,
-            'name': s.name_th,
-            'classroom': s.classroom or 'ไม่ระบุ',
-            'roll': s.roll_number or 0,
-            'total_classes': 0,
-            'present': 0,
-            'late': 0
+            'id': s.id, 'name': s.name_th, 'classroom': s.classroom or 'ไม่ระบุ',
+            'roll': s.roll_number or 0, 'total_classes': 0, 'present': 0, 'late': 0
         }
+
+    # --- ส่วนที่เพิ่ม: คำนวณภาพรวมทั้งโรงเรียน ---
+    total_summary = {
+        'total_students': len(students),
+        'total_present': 0,
+        'total_late': 0,
+        'total_absent': 0, # สำหรับเคสที่มีชื่อแต่ไม่มีประวัติเช็กชื่อในวันนั้น
+        'avg_attendance_rate': 0
+    }
 
     for a in attendances:
         if a.student_id in student_stats:
             student_stats[a.student_id]['total_classes'] += 1
             if a.status == 'Present':
                 student_stats[a.student_id]['present'] += 1
+                total_summary['total_present'] += 1
             elif a.status == 'Late':
                 student_stats[a.student_id]['late'] += 1
-
-    # 2. คำนวณเปอร์เซ็นต์การเข้าเรียนให้แต่ละคน
+                total_summary['total_late'] += 1
+    
+    # คำนวณเปอร์เซ็นต์รายคนและหาค่าเฉลี่ยรวม
     student_list = []
+    total_rate_sum = 0
     for uid, data in student_stats.items():
-        if data['total_classes'] > 0:
-            # สมมติว่ามาเรียนและมาสาย ถือว่าเข้าเรียน (คุณปรับแก้ลอจิกตรงนี้ได้)
-            attendance_rate = ((data['present'] + data['late']) / data['total_classes']) * 100
-        else:
-            attendance_rate = 0.0 # ยังไม่มีประวัติ
-            
-        data['attendance_rate'] = round(attendance_rate, 2)
+        rate = round(((data['present'] + data['late']) / data['total_classes'] * 100), 2) if data['total_classes'] > 0 else 0
+        data['attendance_rate'] = rate
         student_list.append(data)
+        total_rate_sum += rate
 
-    # ส่งข้อมูลไปหน้าเว็บในรูปแบบ JSON text
-    return render_template('dashboard.html', students_json=json.dumps(student_list))
+    total_summary['avg_attendance_rate'] = round(total_rate_sum / len(students), 2) if students else 0
+
+    return render_template('dashboard.html', 
+                           students_json=json.dumps(student_list),
+                           summary=total_summary) # ส่ง summary เพิ่มไป
 
 @app.route('/update_db_faces')
 def update_db_faces():
@@ -197,6 +235,7 @@ def update_db_faces():
     return redirect(url_for('index'))
 
 @app.route('/reports')
+@login_required
 def reports():
     """หน้าเว็บแสดงรายงานทั้งหมด"""
     # ดึงข้อมูลทั้งหมดจาก Database เรียงจากวันที่และเวลาล่าสุดขึ้นก่อน
@@ -242,6 +281,7 @@ def export_csv():
     return output
 
 @app.route('/students')
+@login_required
 def students():
     """หน้าเว็บแสดงรายชื่อนักเรียนทั้งหมด (เรียงตามห้องและเลขที่)"""
     all_students = Student.query.order_by(Student.classroom, Student.roll_number).all()
@@ -271,6 +311,7 @@ def delete_student_route(student_id):
     return redirect(url_for('students'))
 
 @app.route('/register_student', methods=['GET', 'POST'])
+@login_required
 def register_student():
     """ระบบลงทะเบียนนักเรียนและถ่ายรูปผ่านเว็บ"""
     if request.method == 'GET':
@@ -477,6 +518,7 @@ def get_subjects():
     } for s in subjects])
 
 @app.route('/subjects', methods=['GET', 'POST'])
+@login_required
 def manage_subjects():
     """หน้าเว็บจัดการข้อมูลรายวิชา (เพิ่ม/ลบ)"""
     if request.method == 'POST':

@@ -1,269 +1,374 @@
-{% extends 'base.html' %}
-{% block title %}ภาพรวมสถิติการเข้าเรียน{% endblock %}
-
+{% extends 'base.html' %} {% block title %}ภาพรวมสถิติการเข้าเรียน{% endblock %}
 {% block content %}
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-    .dash-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-    
-    /* สไตล์ Breadcrumb (ป้ายบอกทาง) */
-    .breadcrumb { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); display: flex; gap: 10px; align-items: center; margin-bottom: 25px; font-weight: bold; color: #4a5568; }
-    .breadcrumb span { cursor: pointer; color: #3182ce; transition: 0.2s; }
-    .breadcrumb span:hover { color: #2b6cb0; text-decoration: underline; }
-    .breadcrumb .separator { color: #a0aec0; cursor: default; text-decoration: none; }
-    .breadcrumb .current { color: #2d3748; cursor: default; text-decoration: none; }
+  :root {
+    --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  }
+  .modern-card {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: var(--card-shadow);
+    border: none;
+    transition: 0.3s;
+  }
+  .stat-label {
+    color: #a0aec0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2d3748;
+    margin: 5px 0;
+  }
+  .trend-up {
+    color: #48bb78;
+    font-size: 0.85rem;
+    font-weight: bold;
+  }
 
-    /* สไตล์การ์ดตัวเลือก */
-    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; }
-    .level-card { background: white; border-radius: 12px; padding: 25px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border-bottom: 5px solid #3182ce; }
-    .level-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
-    .level-card i { font-size: 2.5rem; color: #3182ce; margin-bottom: 15px; }
-    .level-card h3 { margin: 0; color: #2d3748; font-size: 1.5rem; }
-    .level-card p { margin: 10px 0 0 0; color: #718096; font-size: 0.95rem; }
-    .stat-badge { display: inline-block; background: #ebf8ff; color: #2b6cb0; padding: 5px 12px; border-radius: 20px; font-weight: bold; margin-top: 15px; }
+  /* สไตล์ Ranking */
+  .ranking-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f7fafc;
+  }
+  .rank-number {
+    width: 30px;
+    height: 30px;
+    background: #3182ce;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 0.8rem;
+  }
 
-    /* สไตล์ตารางรายบุคคล */
-    .table-container { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.03); padding: 20px; display: none; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 15px; text-align: left; border-bottom: 1px solid #edf2f7; }
-    th { background-color: #f7fafc; color: #4a5568; }
-    .progress-bar { height: 8px; background: #edf2f7; border-radius: 4px; overflow: hidden; margin-top: 5px; }
-    .progress-fill { height: 100%; border-radius: 4px; }
+  /* สไตล์การ์ดตัวเลือกเดิม */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+  }
+  .level-card {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    text-align: center;
+    box-shadow: var(--card-shadow);
+    cursor: pointer;
+    transition: 0.2s;
+    border-bottom: 5px solid #3182ce;
+  }
+  .level-card:hover {
+    transform: translateY(-5px);
+  }
+  .stat-badge {
+    display: inline-block;
+    background: #ebf8ff;
+    color: #2b6cb0;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    margin-top: 10px;
+  }
 </style>
 
-<div>
-    <div class="breadcrumb" id="breadcrumb">
-        </div>
-
-    <div class="card-grid" id="categoryGrid">
-        </div>
-
-    <div class="table-container" id="studentTableContainer">
-        <table>
-            <thead>
-                <tr>
-                    <th>เลขที่</th>
-                    <th>รหัสนักเรียน</th>
-                    <th>ชื่อ-นามสกุล</th>
-                    <th>เข้าเรียน (ครั้ง)</th>
-                    <th>อัตราการเข้าเรียน (%)</th>
-                </tr>
-            </thead>
-            <tbody id="studentTableBody">
-                </tbody>
-        </table>
+<div
+  style="
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+  "
+>
+  <div class="modern-card" style="border-left: 5px solid #3182ce">
+    <div class="stat-label">นักเรียนทั้งหมด</div>
+    <div class="stat-value">{{ summary.total_students }} คน</div>
+    <div style="color: #718096; font-size: 0.85rem">
+      <i class="fas fa-users"></i> ข้อมูลรายชื่อในระบบ
     </div>
+  </div>
+  <div class="modern-card" style="border-left: 5px solid #48bb78">
+    <div class="stat-label">มาเรียนเฉลี่ย (ทั้งโรงเรียน)</div>
+    <div class="stat-value" id="statRate">
+      {{ summary.avg_attendance_rate }}%
+    </div>
+    <div class="trend-up">▲ อัปเดตล่าสุดวันนี้</div>
+  </div>
 </div>
 
+<div
+  id="analyticsSection"
+  style="
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 25px;
+    margin-bottom: 30px;
+  "
+>
+  <div class="modern-card">
+    <h3 id="currentViewTitle" style="margin-bottom: 20px; color: #2d3748">
+      สถิติการเข้าเรียนแยกตามชั้นเรียน
+    </h3>
+    <div style="height: 350px">
+      <canvas id="overallChart"></canvas>
+    </div>
+  </div>
+
+  <div class="modern-card">
+    <h3 style="margin-bottom: 20px">อันดับห้องเรียนยอดเยี่ยม</h3>
+    <div id="rankingList">
+      <p style="color: #a0aec0; text-align: center; padding-top: 20px">
+        กำลังประมวลผลอันดับ...
+      </p>
+    </div>
+  </div>
+</div>
+
+<div
+  class="dash-header"
+  style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px"
+>
+  <button
+    onclick="goBack()"
+    id="backBtn"
+    style="
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      border: none;
+      background: white;
+      color: #4a5568;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      transition: 0.2s;
+      flex-shrink: 0; /* ป้องกันปุ่มถูกบีบ */
+    "
+  >
+    <i class="fas fa-arrow-left" style="font-size: 1.2rem"></i>
+  </button>
+  <div
+    class="breadcrumb"
+    id="breadcrumb"
+    style="
+      background: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      flex: 1;
+      font-weight: bold;
+      color: #3182ce;
+      box-shadow: var(--card-shadow);
+    "
+  ></div>
+</div>
+
+<div class="card-grid" id="categoryGrid"></div>
+
+<div
+  id="studentTableContainer"
+  style="
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: var(--card-shadow);
+    display: none;
+  "
+>
+  <table style="width: 100%; border-collapse: collapse">
+    <thead>
+      <tr style="text-align: left; background: #f7fafc">
+        <th style="padding: 15px">เลขที่</th>
+        <th>ชื่อ-นามสกุล</th>
+        <th>เข้าเรียน (ครั้ง)</th>
+        <th>สถิติ (%)</th>
+      </tr>
+    </thead>
+    <tbody id="studentTableBody"></tbody>
+  </table>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
-    // รับข้อมูลนักเรียนทั้งหมดจาก Flask (ข้อมูลดิบ)
-    const rawData = {{ students_json | safe }};
-    
-    // สถานะปัจจุบันของการคลิก (Path)
-    let currentPath = []; // ว่าง = หน้าแรกโรงเรียน
+  let attendanceChart = null;
+  const rawData = {{ students_json | safe }};
+  let currentPath = [];
 
-    // ฟังก์ชันเริ่มการทำงาน
-    function initDashboard() {
-        renderView();
+  window.addEventListener('DOMContentLoaded', () => { renderView(); });
+
+  function renderView() {
+    renderBreadcrumb();
+    const backBtn = document.getElementById('backBtn');
+    if (backBtn) backBtn.style.display = currentPath.length > 0 ? 'flex' : 'none';
+
+    let displayData = rawData;
+    let currentTitle = "ภาพรวมโรงเรียน";
+
+    if (currentPath.length > 0) {
+      let groupsL1 = getLevel1Groups(rawData);
+      displayData = groupsL1[currentPath[0]] || [];
+      currentTitle = currentPath[0];
+    }
+    if (currentPath.length > 1) {
+      let groupsL2 = getLevel2Groups(displayData);
+      displayData = groupsL2[currentPath[1]] || [];
+      currentTitle = currentPath[1];
+    }
+    if (currentPath.length > 2) {
+      let groupsL3 = getLevel3Groups(displayData);
+      displayData = groupsL3[currentPath[2]] || [];
+      currentTitle = currentPath[2];
     }
 
-    // ฟังก์ชันจัดกลุ่มนักเรียน (แบ่ง ม.ต้น / ม.ปลาย)
-    function getLevel1Groups(data) {
-        let groups = { "ม.ต้น": [], "ม.ปลาย": [], "อื่นๆ": [] };
-        data.forEach(s => {
-            if (s.classroom.includes("ม.1") || s.classroom.includes("ม.2") || s.classroom.includes("ม.3")) {
-                groups["ม.ต้น"].push(s);
-            } else if (s.classroom.includes("ม.4") || s.classroom.includes("ม.5") || s.classroom.includes("ม.6")) {
-                groups["ม.ปลาย"].push(s);
-            } else {
-                groups["อื่นๆ"].push(s);
-            }
-        });
-        // ลบกลุ่มที่ไม่มีเด็กออก
-        if(groups["อื่นๆ"].length === 0) delete groups["อื่นๆ"];
-        if(groups["ม.ต้น"].length === 0) delete groups["ม.ต้น"];
-        if(groups["ม.ปลาย"].length === 0) delete groups["ม.ปลาย"];
-        return groups;
-    }
+    // อัปเดตกราฟแท่ง และ Ranking
+    updateModernCharts(displayData, currentTitle);
 
-    // ฟังก์ชันจัดกลุ่มตามชั้นปี (เช่น ม.1, ม.2)
-    function getLevel2Groups(data) {
-        let groups = {};
-        data.forEach(s => {
-            // ดึงข้อความก่อนเครื่องหมาย / (เช่น ม.1/1 -> ม.1)
-            let grade = s.classroom.split('/')[0].trim(); 
-            if(!groups[grade]) groups[grade] = [];
-            groups[grade].push(s);
-        });
-        return groups;
-    }
+    const grid = document.getElementById('categoryGrid');
+    const tableContainer = document.getElementById('studentTableContainer');
+    const tbody = document.getElementById('studentTableBody');
+    grid.innerHTML = '';
+    tbody.innerHTML = '';
 
-    // ฟังก์ชันจัดกลุ่มตามห้องเรียน (เช่น ม.1/1, ม.1/2)
-    function getLevel3Groups(data) {
-        let groups = {};
-        data.forEach(s => {
-            let room = s.classroom.trim();
-            if(!groups[room]) groups[room] = [];
-            groups[room].push(s);
-        });
-        return groups;
-    }
+    if (currentPath.length < 3) {
+      tableContainer.style.display = 'none';
+      grid.style.display = 'grid';
+      let groups, icon;
+      if (currentPath.length === 0) { groups = getLevel1Groups(displayData); icon = 'fas fa-school'; }
+      else if (currentPath.length === 1) { groups = getLevel2Groups(displayData); icon = 'fas fa-layer-group'; }
+      else { groups = getLevel3Groups(displayData); icon = 'fas fa-door-open'; }
 
-    // ฟังก์ชันคำนวณสถิติรวมของกลุ่มนั้นๆ
-    function calculateGroupStats(students) {
-        if(students.length === 0) return { avg: 0, count: 0 };
-        let totalSum = students.reduce((sum, s) => sum + s.attendance_rate, 0);
-        return {
-            avg: (totalSum / students.length).toFixed(1),
-            count: students.length
-        };
-    }
-
-    // ================= ส่วนของการแสดงผล (Render) =================
-    
-    function renderView() {
-        renderBreadcrumb();
-        
-        let displayData = rawData;
-        
-        // กรองข้อมูลตามที่ผู้ใช้คลิกเข้ามา
-        if(currentPath.length > 0) {
-            // ถ้าคลิก ม.ต้น หรือ ม.ปลาย
-            let groupsL1 = getLevel1Groups(rawData);
-            displayData = groupsL1[currentPath[0]] || [];
-        }
-        if(currentPath.length > 1) {
-            // ถ้าคลิกชั้นปี
-            let groupsL2 = getLevel2Groups(displayData);
-            displayData = groupsL2[currentPath[1]] || [];
-        }
-        if(currentPath.length > 2) {
-            // ถ้าคลิกห้องเรียน
-            let groupsL3 = getLevel3Groups(displayData);
-            displayData = groupsL3[currentPath[2]] || [];
-        }
-
-        const grid = document.getElementById('categoryGrid');
-        const tableContainer = document.getElementById('studentTableContainer');
-        const tbody = document.getElementById('studentTableBody');
-        
-        grid.innerHTML = '';
-        tbody.innerHTML = '';
-
-        // เลือกว่าจะโชว์การ์ด หรือ โชว์ตาราง
-        if (currentPath.length === 0) {
-            // หน้าแรก: โชว์ ม.ต้น / ม.ปลาย
-            tableContainer.style.display = 'none';
-            grid.style.display = 'grid';
-            let groups = getLevel1Groups(displayData);
-            for (let key in groups) { createCard(key, groups[key], 'fas fa-school'); }
-            
-        } else if (currentPath.length === 1) {
-            // โชว์ระดับชั้น (ม.1, ม.2 ...)
-            tableContainer.style.display = 'none';
-            grid.style.display = 'grid';
-            let groups = getLevel2Groups(displayData);
-            for (let key in groups) { createCard(key, groups[key], 'fas fa-layer-group'); }
-            
-        } else if (currentPath.length === 2) {
-            // โชว์ห้องเรียน (ม.1/1, ม.1/2 ...)
-            tableContainer.style.display = 'none';
-            grid.style.display = 'grid';
-            let groups = getLevel3Groups(displayData);
-            for (let key in groups) { createCard(key, groups[key], 'fas fa-door-open'); }
-            
-        } else if (currentPath.length === 3) {
-            // สเต็ปสุดท้าย: โชว์ตารางรายชื่อเด็กในห้องนั้น
-            grid.style.display = 'none';
-            tableContainer.style.display = 'block';
-            
-            // เรียงตามเลขที่
-            displayData.sort((a, b) => a.roll - b.roll);
-            
-            displayData.forEach(s => {
-    // กำหนดสีตามเปอร์เซ็นต์
-    let color = s.attendance_rate >= 80 ? '#48bb78' : (s.attendance_rate >= 50 ? '#ecc94b' : '#e53e3e');
-    
-    tbody.innerHTML += `
-        <tr>
-            <td style="color: #718096; font-weight: 600;">#${s.roll}</td>
-            <td><span style="font-weight: 700; color: #2d3748;">${s.id}</span></td>
+      for (let key in groups) { createCard(key, groups[key], icon); }
+    } else {
+      grid.style.display = 'none';
+      tableContainer.style.display = 'block';
+      displayData.sort((a, b) => a.roll - b.roll);
+      displayData.forEach(s => {
+        let color = s.attendance_rate >= 80 ? '#48bb78' : (s.attendance_rate >= 50 ? '#ecc94b' : '#e53e3e');
+        tbody.innerHTML += `
+          <tr style="border-bottom: 1px solid #edf2f7;">
+            <td style="padding: 15px; font-weight: bold;">#${s.roll}</td>
             <td>${s.name}</td>
-            <td>
-                <span style="background: #f7fafc; padding: 4px 10px; border-radius: 6px; font-size: 0.9rem; border: 1px solid #edf2f7;">
-                    ${s.present + s.late} / ${s.total_classes} คาบ
-                </span>
-            </td>
-            <td>
-                <div class="progress-container">
-                    <div class="progress-bar-bg">
-                        <div class="progress-bar-fill" style="width: ${s.attendance_rate}%; background-color: ${color};"></div>
-                    </div>
-                    <strong style="color: ${color}; min-width: 45px; text-align: right;">${s.attendance_rate}%</strong>
-                </div>
-            </td>
-        </tr>
-    `;
-});
-        }
+            <td>${s.present + s.late} / ${s.total_classes} คาบ</td>
+            <td><span style="color:${color}; font-weight:bold;">${s.attendance_rate}%</span></td>
+          </tr>`;
+      });
     }
+  }
 
-    // สร้างการ์ดปุ่มกดเพื่อเจาะลึก
-    function createCard(title, students, iconClass) {
-    const stats = calculateGroupStats(students);
+  function updateModernCharts(data, title) {
+    const ctx = document.getElementById('overallChart').getContext('2d');
+    const rankingDiv = document.getElementById('rankingList');
+
+    // คำนวณข้อมูลสำหรับกราฟแท่ง (แยกตามกลุ่มย่อย)
+    let groups;
+    if (currentPath.length === 0) groups = getLevel1Groups(data);
+    else if (currentPath.length === 1) groups = getLevel2Groups(data);
+    else groups = getLevel3Groups(data);
+
+    let labels = Object.keys(groups);
+    let values = labels.map(key => {
+        let avg = groups[key].reduce((a, b) => a + b.attendance_rate, 0) / groups[key].length;
+        return avg.toFixed(1);
+    });
+
+    if (attendanceChart) attendanceChart.destroy();
+    attendanceChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: '% การเข้าเรียน',
+          data: values,
+          backgroundColor: '#3182ce',
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, max: 100 } }
+      }
+    });
+
+    // อัปเดต Ranking 5 อันดับแรก
+    let allRooms = getLevel3Groups(rawData);
+    let sortedRooms = Object.keys(allRooms).map(name => {
+        let avg = allRooms[name].reduce((a, b) => a + b.attendance_rate, 0) / allRooms[name].length;
+        return { name, avg };
+    }).sort((a, b) => b.avg - a.avg).slice(0, 5);
+
+    rankingDiv.innerHTML = sortedRooms.map((room, i) => `
+      <div class="ranking-item">
+        <div class="rank-number">${i+1}</div>
+        <div style="flex:1"><b>${room.name}</b></div>
+        <div style="color:#48bb78; font-weight:bold;">${room.avg.toFixed(1)}%</div>
+      </div>
+    `).join('');
+  }
+
+  // --- Helper Functions เดิม ---
+  function getLevel1Groups(data) {
+    let groups = { "ม.ต้น": [], "ม.ปลาย": [] };
+    data.forEach(s => {
+      if (["ม.1", "ม.2", "ม.3"].some(g => s.classroom.includes(g))) groups["ม.ต้น"].push(s);
+      else if (["ม.4", "ม.5", "ม.6"].some(g => s.classroom.includes(g))) groups["ม.ปลาย"].push(s);
+    });
+    return groups;
+  }
+
+  function getLevel2Groups(data) {
+    let groups = {};
+    data.forEach(s => {
+      let grade = s.classroom.split('/')[0].trim();
+      if (!groups[grade]) groups[grade] = [];
+      groups[grade].push(s);
+    });
+    return groups;
+  }
+
+  function getLevel3Groups(data) {
+    let groups = {};
+    data.forEach(s => {
+      if (!groups[s.classroom]) groups[s.classroom] = [];
+      groups[s.classroom].push(s);
+    });
+    return groups;
+  }
+
+  function createCard(title, students, iconClass) {
+    let avg = (students.reduce((a, b) => a + b.attendance_rate, 0) / students.length).toFixed(1);
     const card = document.createElement('div');
     card.className = 'level-card';
-    card.style = `
-        background: white;
-        padding: 24px;
-        border-radius: 16px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border-top: 4px solid var(--primary);
-    `;
-    
-    card.innerHTML = `
-        <div style="font-size: 2rem; color: var(--primary); margin-bottom: 12px;"><i class="${iconClass}"></i></div>
-        <h3 style="margin: 0; font-size: 1.25rem;">${title}</h3>
-        <p style="color: #64748b; margin: 8px 0;">นักเรียน ${stats.count} คน</p>
-        <div style="background: #eff6ff; color: #1d4ed8; padding: 4px 12px; border-radius: 20px; font-weight: bold; display: inline-block;">
-            เฉลี่ย ${stats.avg}%
-        </div>
-    `;
-        card.onclick = () => {
-            currentPath.push(title);
-            renderView();
-        };
-        document.getElementById('categoryGrid').appendChild(card);
-    }
+    card.innerHTML = `<i class="${iconClass}"></i><h3>${title}</h3><p>${students.length} คน</p><div class="stat-badge">${avg}%</div>`;
+    card.onclick = () => { currentPath.push(title); renderView(); };
+    document.getElementById('categoryGrid').appendChild(card);
+  }
 
-    // สร้างแถบนำทางด้านบน (คลิกย้อนกลับได้)
-    function renderBreadcrumb() {
-        const bc = document.getElementById('breadcrumb');
-        bc.innerHTML = `<span onclick="goToLevel(-1)"><i class="fas fa-home"></i> ภาพรวมโรงเรียน</span>`;
-        
-        currentPath.forEach((path, index) => {
-            bc.innerHTML += `<span class="separator"><i class="fas fa-chevron-right"></i></span>`;
-            if (index === currentPath.length - 1) {
-                bc.innerHTML += `<span class="current">${path}</span>`;
-            } else {
-                bc.innerHTML += `<span onclick="goToLevel(${index})">${path}</span>`;
-            }
-        });
-    }
+  function renderBreadcrumb() {
+    const bc = document.getElementById('breadcrumb');
+    bc.innerHTML = `<span onclick="goToLevel(-1)"><i class="fas fa-home"></i> โรงเรียน</span>`;
+    currentPath.forEach((path, index) => {
+      bc.innerHTML += ` <i class="fas fa-chevron-right separator" style="margin:0 10px;"></i> `;
+      if (index === currentPath.length - 1) bc.innerHTML += `<span class="current">${path}</span>`;
+      else bc.innerHTML += `<span onclick="goToLevel(${index})">${path}</span>`;
+    });
+  }
 
-    // ฟังก์ชันกระโดดกลับไปหน้าก่อนหน้า
-    function goToLevel(index) {
-        if (index === -1) {
-            currentPath = [];
-        } else {
-            currentPath = currentPath.slice(0, index + 1);
-        }
-        renderView();
-    }
-
-    // โหลดหน้าจอครั้งแรก
-    initDashboard();
+  function goBack() { currentPath.pop(); renderView(); }
+  function goToLevel(index) { currentPath = index === -1 ? [] : currentPath.slice(0, index + 1); renderView(); }
 </script>
 {% endblock %}
